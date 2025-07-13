@@ -234,6 +234,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     );
   }
 
+  
+
   // Generate 20 levels (using existing 5 levels + placeholders)
   List<GameLevel> _generateLevels() {
     final existingLevels = GameData.getLevels();

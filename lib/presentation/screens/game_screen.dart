@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutx_core/core/routes/services/go_next_navigation.dart';
 import 'package:flutx_core/core/screen/app_sizes.dart';
+import 'package:flutx_core/flutx_core.dart';
 import 'package:word_game/constants/app_colors.dart';
+import 'package:word_game/presentation/widgets/icon_button_widget.dart';
 import '../../data/game_data.dart';
 import '../../models/game_models.dart';
 import '../widgets/word_grid.dart';
@@ -48,6 +50,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _refreshGame() {
+    setState(() {
+      wordsToFind = GameData.createWordsToFind(widget.level.words);
+      foundWordPositions.clear();
+      dragSelection = DragSelection();
+      isHintActive = false;
+      currentHintWord = null;
+      hintPositions.clear();
+      hintStep = 0;
+      currentHintLetterIndex = 0;
+    });
+  }
+
   @override
   void dispose() {
     _hintAnimationController.dispose();
@@ -79,23 +94,27 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    InkWell(
+                    IconButtonWidget(
+                      icon: Icons.arrow_back,
                       onTap: () => Go.backtrack(),
-                      child: Container(
-                        height: 48,
-                        width: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBgColor,
-                          borderRadius: BorderRadius.circular(48),
-                          border: BoxBorder.all(color: Colors.white),
-                        ),
-                        child: Icon(
-                          Icons.arrow_back,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
                     ),
+                    // InkWell(
+                    //   onTap: () => Go.backtrack(),
+                    //   child: Container(
+                    //     height: 48,
+                    //     width: 48,
+                    //     decoration: BoxDecoration(
+                    //       color: AppColors.primaryBgColor,
+                    //       borderRadius: BorderRadius.circular(48),
+                    //       border: BoxBorder.all(color: Colors.white),
+                    //     ),
+                    //     child: Icon(
+                    //       Icons.arrow_back,
+                    //       color: Colors.white,
+                    //       size: 28,
+                    //     ),
+                    //   ),
+                    // ),
                     // ElevatedButton(
                     //   onPressed: Go.backtrack,
                     //   child: Icon(
@@ -131,23 +150,28 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       ),
                     ),
 
-                    InkWell(
+                    IconButtonWidget(
+                      icon: Icons.settings,
                       onTap: () => Go.backtrack(),
-                      child: Container(
-                        height: 48,
-                        width: 48,
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryBgColor,
-                          borderRadius: BorderRadius.circular(48),
-                          border: BoxBorder.all(color: Colors.white),
-                        ),
-                        child: Icon(
-                          Icons.settings,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                      ),
                     ),
+
+                    // InkWell(
+                    //   onTap: () => Go.backtrack(),
+                    //   child: Container(
+                    //     height: 48,
+                    //     width: 48,
+                    //     decoration: BoxDecoration(
+                    //       color: AppColors.primaryBgColor,
+                    //       borderRadius: BorderRadius.circular(48),
+                    //       border: BoxBorder.all(color: Colors.white),
+                    //     ),
+                    //     child: Icon(
+                    //       Icons.settings,
+                    //       color: Colors.white,
+                    //       size: 28,
+                    //     ),
+                    //   ),
+                    // ),
                     // Hint button
                     // IconButton(
                     //   onPressed: isHintActive ? null : _showHint,
@@ -160,6 +184,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ],
                 ),
               ),
+
+              Gap.bottomBarGap,
 
               // Word list to find
               SizedBox(
@@ -228,51 +254,59 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              // const SizedBox(height: 20),
 
               // Game grid
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha((0.6 * 255).toInt()),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha((0.1 * 255).toInt()),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                  ),
-                  child: WordGrid(
-                    grid: widget.level.grid,
-                    wordsToFind: wordsToFind,
-                    dragSelection: dragSelection,
-                    onWordFound: _onWordFound,
-                    foundWordPositions: foundWordPositions,
-                    // Pass hint data to grid
-                    isHintActive: isHintActive,
-                    currentHintWord: currentHintWord,
-                    hintPositions: hintPositions,
-                    hintStep: hintStep,
-                    currentHintLetterIndex: currentHintLetterIndex,
-                    hintAnimationController: _hintAnimationController,
-                    flashAnimationController: _flashAnimationController,
-                  ),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha((0.6 * 255).toInt()),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha((0.1 * 255).toInt()),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: WordGrid(
+                  grid: widget.level.grid,
+                  wordsToFind: wordsToFind,
+                  dragSelection: dragSelection,
+                  onWordFound: _onWordFound,
+                  foundWordPositions: foundWordPositions,
+                  // Pass hint data to grid
+                  isHintActive: isHintActive,
+                  currentHintWord: currentHintWord,
+                  hintPositions: hintPositions,
+                  hintStep: hintStep,
+                  currentHintLetterIndex: currentHintLetterIndex,
+                  hintAnimationController: _hintAnimationController,
+                  flashAnimationController: _flashAnimationController,
                 ),
               ),
 
               // Progress indicator
-              Container(
-                margin: const EdgeInsets.all(16),
-                child: Text(
-                  'Found: ${wordsToFind.where((w) => w.isFound).length}/${wordsToFind.length}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButtonWidget(
+                      icon: Icons.lightbulb_outline,
+                      onTap: () {
+                        isHintActive ? null : _showHint();
+                      },
+                    ),
+
+                    Gap.w16,
+
+                    IconButtonWidget(
+                      icon: Icons.refresh,
+                      onTap: () => _refreshGame(),
+                    ),
+                  ],
                 ),
               ),
             ],
