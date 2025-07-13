@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutx_core/core/routes/services/go_next_navigation.dart';
 import 'package:flutx_core/core/screen/app_sizes.dart';
-import 'package:flutx_core/core/theme/extensions/text_extension.dart';
 import 'package:word_game/constants/app_colors.dart';
 import '../../data/game_data.dart';
 import '../../models/game_models.dart';
@@ -60,6 +60,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage('assets/game_screen_bg.png'),
+            fit: BoxFit.cover,
+          ),
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -75,31 +79,84 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 28,
+                    InkWell(
+                      onTap: () => Go.backtrack(),
+                      child: Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBgColor,
+                          borderRadius: BorderRadius.circular(48),
+                          border: BoxBorder.all(color: Colors.white),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                     ),
-                    Text(
-                      'Level ${widget.level.level}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+                    // ElevatedButton(
+                    //   onPressed: Go.backtrack,
+                    //   child: Icon(
+                    //     Icons.arrow_back,
+                    //     color: Colors.white,
+                    //     size: 28,
+                    //   ),
+                    // ),
+                    // IconButton(
+                    //   onPressed: () => Navigator.pop(context),
+                    //   icon: const Icon(
+                    //     Icons.arrow_back,
+                    //     color: Colors.white,
+                    //     size: 28,
+                    //   ),
+                    // ),
+                    Container(
+                      padding: AppSizes.paddingXl.symmetric(
+                        horizontal: 46.5,
+                        vertical: 8.5,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(4),
+                        color: AppColors.primaryBgColor,
+                      ),
+                      child: Text(
+                        'Level ${widget.level.level}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+
+                    InkWell(
+                      onTap: () => Go.backtrack(),
+                      child: Container(
+                        height: 48,
+                        width: 48,
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBgColor,
+                          borderRadius: BorderRadius.circular(48),
+                          border: BoxBorder.all(color: Colors.white),
+                        ),
+                        child: Icon(
+                          Icons.settings,
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                     ),
                     // Hint button
-                    IconButton(
-                      onPressed: isHintActive ? null : _showHint,
-                      icon: Icon(
-                        Icons.lightbulb_outline,
-                        color: isHintActive ? Colors.grey : Colors.yellow,
-                        size: 28,
-                      ),
-                    ),
+                    // IconButton(
+                    //   onPressed: isHintActive ? null : _showHint,
+                    //   icon: Icon(
+                    //     Icons.lightbulb_outline,
+                    //     color: isHintActive ? Colors.grey : Colors.yellow,
+                    //     size: 28,
+                    //   ),
+                    // ),
                   ],
                 ),
               ),
@@ -110,7 +167,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   children: [
                     Container(
                       width: double.infinity,
-                      height: 44,
+                      height: 50,
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       // height: 10,
                       decoration: BoxDecoration(
@@ -159,11 +216,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       margin: const EdgeInsets.symmetric(horizontal: 16),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        // borderRadius: BorderRadius.only(
-                        //   bottomLeft: Radius.circular(10),
-                        //   bottomRight: Radius.circular(10),
-                        // ),
+                        color: Colors.white.withAlpha((0.6 * 255).toInt()),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(10),
+                          bottomRight: Radius.circular(10),
+                        ),
                       ),
                       child: WordList(wordsToFind: wordsToFind),
                     ),
@@ -178,11 +235,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: Container(
                   margin: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.95),
+                    color: Colors.white.withAlpha((0.6 * 255).toInt()),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
+                        color: Colors.black.withAlpha((0.1 * 255).toInt()),
                         blurRadius: 10,
                         offset: const Offset(0, 5),
                       ),

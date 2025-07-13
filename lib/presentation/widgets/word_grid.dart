@@ -8,7 +8,7 @@ class WordGrid extends StatefulWidget {
   final DragSelection dragSelection;
   final Function(WordToFind, List<GridPosition>) onWordFound;
   final List<List<GridPosition>> foundWordPositions;
-
+  
   // Hint system properties
   final bool isHintActive;
   final WordToFind? currentHintWord;
@@ -112,7 +112,7 @@ class _WordGridState extends State<WordGrid> {
           widget.dragSelection.startPosition!,
           gridPosition,
         );
-
+        
         _currentDragWord = _getCurrentDragWord();
       });
     }
@@ -122,7 +122,7 @@ class _WordGridState extends State<WordGrid> {
     if (widget.dragSelection.selectedPositions.isNotEmpty) {
       _checkForWord();
     }
-
+    
     setState(() {
       widget.dragSelection.reset();
       _currentDragWord = null;
@@ -140,58 +140,52 @@ class _WordGridState extends State<WordGrid> {
     return null;
   }
 
-  List<GridPosition> _getPositionsBetween(
-    GridPosition start,
-    GridPosition end,
-  ) {
+  List<GridPosition> _getPositionsBetween(GridPosition start, GridPosition end) {
     List<GridPosition> positions = [];
-
+    
     int deltaRow = end.row - start.row;
     int deltaCol = end.col - start.col;
-
+    
     if (deltaRow == 0 || deltaCol == 0 || deltaRow.abs() == deltaCol.abs()) {
       int stepRow = deltaRow == 0 ? 0 : (deltaRow > 0 ? 1 : -1);
       int stepCol = deltaCol == 0 ? 0 : (deltaCol > 0 ? 1 : -1);
-
+      
       int currentRow = start.row;
       int currentCol = start.col;
-
+      
       while (true) {
         positions.add(GridPosition(currentRow, currentCol));
-
+        
         if (currentRow == end.row && currentCol == end.col) break;
-
+        
         currentRow += stepRow;
         currentCol += stepCol;
-
-        if (currentRow < 0 ||
-            currentRow >= 7 ||
-            currentCol < 0 ||
-            currentCol >= 7) {
+        
+        if (currentRow < 0 || currentRow >= 7 || currentCol < 0 || currentCol >= 7) {
           break;
         }
       }
     }
-
+    
     return positions;
   }
 
   WordToFind? _getCurrentDragWord() {
     if (widget.dragSelection.selectedPositions.isEmpty) return null;
-
+    
     String selectedWord = '';
     for (GridPosition pos in widget.dragSelection.selectedPositions) {
       selectedWord += widget.grid[pos.row][pos.col];
     }
 
     for (WordToFind wordToFind in widget.wordsToFind) {
-      if (!wordToFind.isFound &&
-          (selectedWord == wordToFind.word ||
-              selectedWord == wordToFind.word.split('').reversed.join())) {
+      if (!wordToFind.isFound && 
+          (selectedWord == wordToFind.word || 
+           selectedWord == wordToFind.word.split('').reversed.join())) {
         return wordToFind;
       }
     }
-
+    
     return null;
   }
 
@@ -202,13 +196,10 @@ class _WordGridState extends State<WordGrid> {
     }
 
     for (WordToFind wordToFind in widget.wordsToFind) {
-      if (!wordToFind.isFound &&
-          (selectedWord == wordToFind.word ||
-              selectedWord == wordToFind.word.split('').reversed.join())) {
-        widget.onWordFound(
-          wordToFind,
-          List.from(widget.dragSelection.selectedPositions),
-        );
+      if (!wordToFind.isFound && 
+          (selectedWord == wordToFind.word || 
+           selectedWord == wordToFind.word.split('').reversed.join())) {
+        widget.onWordFound(wordToFind, List.from(widget.dragSelection.selectedPositions));
         break;
       }
     }
@@ -221,7 +212,7 @@ class GridPainter extends CustomPainter {
   final List<List<GridPosition>> foundWordPositions;
   final List<WordToFind> wordsToFind;
   final WordToFind? currentDragWord;
-
+  
   // Hint properties
   final bool isHintActive;
   final WordToFind? currentHintWord;
@@ -249,14 +240,12 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final cellSize = size.width / 7;
-
+    
     // Draw current selection during drag (only if not hinting)
-    if (!isHintActive &&
-        dragSelection.isActive &&
-        dragSelection.selectedPositions.isNotEmpty) {
+    if (!isHintActive && dragSelection.isActive && dragSelection.selectedPositions.isNotEmpty) {
       Color dragColor;
       double opacity;
-
+      
       if (currentDragWord != null) {
         dragColor = currentDragWord!.color;
         opacity = 0.7;
@@ -264,26 +253,21 @@ class GridPainter extends CustomPainter {
         dragColor = Colors.blue;
         opacity = 0.3;
       }
-
-      _drawDragSelection(
-        canvas,
-        dragSelection.selectedPositions,
-        cellSize,
-        dragColor.withOpacity(opacity),
-      );
+      
+      _drawDragSelection(canvas, dragSelection.selectedPositions, cellSize, dragColor.withOpacity(opacity));
     }
-
+    
     // Draw hint if active
     if (isHintActive && currentHintWord != null) {
       _drawHint(canvas, cellSize);
     }
-
+    
     // Draw grid and letters FIRST
     final textPainter = TextPainter(
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     );
-
+    
     for (int row = 0; row < 7; row++) {
       for (int col = 0; col < 7; col++) {
         final rect = Rect.fromLTWH(
@@ -292,28 +276,25 @@ class GridPainter extends CustomPainter {
           cellSize,
           cellSize,
         );
-
+        
         // Check various states for this cell
-        bool isInCurrentDrag =
-            !isHintActive &&
-            dragSelection.isActive &&
-            dragSelection.selectedPositions.any(
-              (pos) => pos.row == row && pos.col == col,
-            );
+        bool isInCurrentDrag = !isHintActive && dragSelection.isActive && 
+            dragSelection.selectedPositions.any((pos) => pos.row == row && pos.col == col);
         bool isHintCell = _isHintCell(row, col);
-
+        bool isFoundWordLetter = _isFoundWordLetter(row, col);
+        
         // Draw cell backgrounds
         if (isInCurrentDrag) {
-          Color cellColor = currentDragWord != null
+          Color cellColor = currentDragWord != null 
               ? currentDragWord!.color.withOpacity(0.2)
               : Colors.blue.withOpacity(0.1);
           canvas.drawRect(rect, Paint()..color = cellColor);
         }
-
+        
         if (isHintCell) {
           _drawHintCellBackground(canvas, rect, row, col);
         }
-
+        
         // Draw cell border
         canvas.drawRect(
           rect,
@@ -322,14 +303,14 @@ class GridPainter extends CustomPainter {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1,
         );
-
+        
         // Determine letter style
         TextStyle letterStyle = const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
+          fontSize: 28,
+          fontWeight: FontWeight.w600,
           color: Colors.black87,
         );
-
+        
         if (isInCurrentDrag && currentDragWord != null) {
           letterStyle = TextStyle(
             fontSize: 22,
@@ -338,8 +319,15 @@ class GridPainter extends CustomPainter {
           );
         } else if (isHintCell) {
           letterStyle = _getHintLetterStyle(row, col);
+        } else if (isFoundWordLetter) {
+          // WHITE LETTERS FOR FOUND WORDS - This will be drawn on top later
+          letterStyle = const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87, // Keep normal for now, white letters drawn separately
+          );
         }
-
+        
         textPainter.text = TextSpan(text: grid[row][col], style: letterStyle);
         textPainter.layout();
         textPainter.paint(
@@ -351,56 +339,116 @@ class GridPainter extends CustomPainter {
         );
       }
     }
-
-    // Draw found words LAST (on top of everything) - SIMPLE STRAIGHT LINES ONLY
+    
+    // Draw found words LINES (bottom layer)
     for (int i = 0; i < foundWordPositions.length; i++) {
       final positions = foundWordPositions[i];
-      final wordToFind = wordsToFind.firstWhere(
-        (w) => w.foundPositions == positions,
-      );
+      final wordToFind = wordsToFind.firstWhere((w) => w.foundPositions == positions);
       _drawFoundWordStraightLine(canvas, positions, cellSize, wordToFind.color);
+    }
+    
+    // Draw WHITE LETTERS ON TOP of the lines for found words
+    for (int i = 0; i < foundWordPositions.length; i++) {
+      final positions = foundWordPositions[i];
+      _drawWhiteLettersOnTop(canvas, positions, cellSize);
     }
   }
 
-  /// [Draw simple straight line] between `first` and `last` letter
-  void _drawFoundWordStraightLine(
-    Canvas canvas,
-    List<GridPosition> positions,
-    double cellSize,
-    Color color,
-  ) {
-    if (positions.length < 2) return;
+  // NEW: Draw white letters on top of found word lines
+  void _drawWhiteLettersOnTop(Canvas canvas, List<GridPosition> positions, double cellSize) {
+    final textPainter = TextPainter(
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+    
+    // Draw white letters for all positions in the found word
+    for (GridPosition pos in positions) {
+      final rect = Rect.fromLTWH(
+        pos.col * cellSize,
+        pos.row * cellSize,
+        cellSize,
+        cellSize,
+      );
+      
+      // White letter style
+      const whiteLetterStyle = TextStyle(
+        fontSize: 28,
+        fontWeight: FontWeight.w600,
+        color: Colors.white,
+        shadows: [
+          Shadow(
+            color: Colors.black26,
+            blurRadius: 2,
+            offset: Offset(1, 1),
+          ),
+        ],
+      );
+      
+      textPainter.text = TextSpan(
+        text: grid[pos.row][pos.col], 
+        style: whiteLetterStyle,
+      );
+      textPainter.layout();
+      textPainter.paint(
+        canvas,
+        Offset(
+          rect.center.dx - textPainter.width / 2,
+          rect.center.dy - textPainter.height / 2,
+        ),
+      );
+    }
+  }
 
+  // Check if cell is part of any found word
+  bool _isFoundWordLetter(int row, int col) {
+    for (List<GridPosition> positions in foundWordPositions) {
+      if (positions.any((pos) => pos.row == row && pos.col == col)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// [Draw simple straight line with WHITE BORDER] between `first` and `last` letter
+  void _drawFoundWordStraightLine(Canvas canvas, List<GridPosition> positions, double cellSize, Color color) {
+    if (positions.length < 2) return;
+    
     // Get first and last positions
     final firstPos = positions.first;
     final lastPos = positions.last;
-
+    
     // Calculate centers of first and last cells
     final firstCenter = Offset(
       firstPos.col * cellSize + cellSize / 2,
       firstPos.row * cellSize + cellSize / 2,
     );
-
+    
     final lastCenter = Offset(
       lastPos.col * cellSize + cellSize / 2,
       lastPos.row * cellSize + cellSize / 2,
     );
-
-    // Draw the straight line between first and last letter (matching Figma design)
-    final linePaint = Paint()
-      ..color = color
-          .withAlpha((0.9 * 255).toInt()) // High opacity for clear visibility
-      ..strokeWidth =
-          37.0 // Bold line as shown in design
+    
+    // Draw WHITE BORDER STROKE (bottom layer - wider)
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 43.0 // Slightly wider than main line for border effect
       ..strokeCap = StrokeCap.round;
-
+    
+    canvas.drawLine(firstCenter, lastCenter, borderPaint);
+    
+    // Draw the main colored line (top layer)
+    final linePaint = Paint()
+      ..color = color.withAlpha((0.9 * 255).toInt())
+      ..strokeWidth = 37.0 // Original line width
+      ..strokeCap = StrokeCap.round;
+    
     canvas.drawLine(firstCenter, lastCenter, linePaint);
-
-    // Optional: Add small circles at endpoints for better visual feedback
+    
+    // Optional: Add small circles at endpoints
     final endpointPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-
+    
     // Small circles at start and end points
     canvas.drawCircle(firstCenter, 4.0, endpointPaint);
     canvas.drawCircle(lastCenter, 4.0, endpointPaint);
@@ -409,7 +457,7 @@ class GridPainter extends CustomPainter {
   // Draw hint visualization
   void _drawHint(Canvas canvas, double cellSize) {
     if (currentHintWord == null || hintPositions.isEmpty) return;
-
+    
     if (hintStep == 1) {
       // Step 1: Show letters one by one
       for (int i = 0; i <= currentHintLetterIndex; i++) {
@@ -419,9 +467,9 @@ class GridPainter extends CustomPainter {
             pos.col * cellSize + cellSize / 2,
             pos.row * cellSize + cellSize / 2,
           );
-
+          
           double opacity = i == currentHintLetterIndex ? hintAnimation : 1.0;
-
+          
           canvas.drawCircle(
             center,
             cellSize * 0.25,
@@ -429,7 +477,7 @@ class GridPainter extends CustomPainter {
               ..color = currentHintWord!.color.withOpacity(opacity * 0.8)
               ..style = PaintingStyle.fill,
           );
-
+          
           canvas.drawCircle(
             center,
             cellSize * 0.25,
@@ -443,19 +491,19 @@ class GridPainter extends CustomPainter {
     } else if (hintStep == 2) {
       // Step 2: Flash all letters with straight line
       double opacity = 0.5 + (flashAnimation * 0.5);
-
+      
       // Draw straight connecting line (same as found words)
       if (hintPositions.length > 1) {
         final firstCenter = Offset(
           hintPositions.first.col * cellSize + cellSize / 2,
           hintPositions.first.row * cellSize + cellSize / 2,
         );
-
+        
         final lastCenter = Offset(
           hintPositions.last.col * cellSize + cellSize / 2,
           hintPositions.last.row * cellSize + cellSize / 2,
         );
-
+        
         canvas.drawLine(
           firstCenter,
           lastCenter,
@@ -465,14 +513,14 @@ class GridPainter extends CustomPainter {
             ..strokeCap = StrokeCap.round,
         );
       }
-
+      
       // Draw all letter circles
       for (GridPosition pos in hintPositions) {
         final center = Offset(
           pos.col * cellSize + cellSize / 2,
           pos.row * cellSize + cellSize / 2,
         );
-
+        
         canvas.drawCircle(
           center,
           cellSize * 0.25,
@@ -480,7 +528,7 @@ class GridPainter extends CustomPainter {
             ..color = currentHintWord!.color.withOpacity(opacity)
             ..style = PaintingStyle.fill,
         );
-
+        
         canvas.drawCircle(
           center,
           cellSize * 0.25,
@@ -494,21 +542,16 @@ class GridPainter extends CustomPainter {
   }
 
   // Draw current drag selection
-  void _drawDragSelection(
-    Canvas canvas,
-    List<GridPosition> positions,
-    double cellSize,
-    Color color,
-  ) {
+  void _drawDragSelection(Canvas canvas, List<GridPosition> positions, double cellSize, Color color) {
     if (positions.isEmpty) return;
-
+    
     if (positions.length == 1) {
       final pos = positions[0];
       final center = Offset(
         pos.col * cellSize + cellSize / 2,
         pos.row * cellSize + cellSize / 2,
       );
-
+      
       canvas.drawCircle(
         center,
         cellSize * 0.3,
@@ -521,23 +564,23 @@ class GridPainter extends CustomPainter {
         ..color = color
         ..strokeWidth = cellSize * 0.6
         ..strokeCap = StrokeCap.round;
-
+      
       final path = Path();
-
+      
       for (int i = 0; i < positions.length; i++) {
         final pos = positions[i];
         final center = Offset(
           pos.col * cellSize + cellSize / 2,
           pos.row * cellSize + cellSize / 2,
         );
-
+        
         if (i == 0) {
           path.moveTo(center.dx, center.dy);
         } else {
           path.lineTo(center.dx, center.dy);
         }
       }
-
+      
       canvas.drawPath(path, paint);
     }
   }
@@ -545,7 +588,7 @@ class GridPainter extends CustomPainter {
   // Check if cell is part of hint
   bool _isHintCell(int row, int col) {
     if (!isHintActive || hintPositions.isEmpty) return false;
-
+    
     if (hintStep == 1) {
       for (int i = 0; i <= currentHintLetterIndex; i++) {
         if (i < hintPositions.length) {
@@ -556,16 +599,16 @@ class GridPainter extends CustomPainter {
     } else if (hintStep == 2) {
       return hintPositions.any((pos) => pos.row == row && pos.col == col);
     }
-
+    
     return false;
   }
 
   // Draw hint cell background
   void _drawHintCellBackground(Canvas canvas, Rect rect, int row, int col) {
     if (currentHintWord == null) return;
-
+    
     double opacity = hintStep == 2 ? 0.3 + (flashAnimation * 0.3) : 0.3;
-
+    
     canvas.drawRect(
       rect,
       Paint()..color = currentHintWord!.color.withOpacity(opacity),
@@ -574,15 +617,16 @@ class GridPainter extends CustomPainter {
 
   // Get hint letter style
   TextStyle _getHintLetterStyle(int row, int col) {
-    if (currentHintWord == null)
+    if (currentHintWord == null) {
       return const TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.bold,
         color: Colors.black87,
       );
-
+    }
+    
     double opacity = hintStep == 2 ? 0.7 + (flashAnimation * 0.3) : 0.9;
-
+    
     return TextStyle(
       fontSize: 24,
       fontWeight: FontWeight.bold,
