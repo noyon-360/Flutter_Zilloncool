@@ -19,17 +19,17 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
+  late GameLevel currentLevel; // Store current level state
   late List<WordToFind> wordsToFind;
   late DragSelection dragSelection;
   List<List<GridPosition>> foundWordPositions = [];
-
   bool isComplete = false;
 
   // Hint system variables
   bool isHintActive = false;
   WordToFind? currentHintWord;
   List<GridPosition> hintPositions = [];
-  int hintStep = 0; // 0: not active, 1: letter by letter, 2: all letters flash
+  int hintStep = 0;
   int currentHintLetterIndex = 0;
   late AnimationController _hintAnimationController;
   late AnimationController _flashAnimationController;
@@ -37,32 +37,42 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    wordsToFind = GameData.createWordsToFind(widget.level.words);
-    dragSelection = DragSelection();
+    currentLevel = widget.level; // Initialize with passed level
+    _initializeGame();
 
     // Initialize hint animation controllers
     _hintAnimationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-
     _flashAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
   }
 
+  void _initializeGame() {
+    wordsToFind = GameData.createWordsToFind(currentLevel.words);
+    dragSelection = DragSelection();
+    foundWordPositions.clear();
+    isComplete = false;
+
+    // Reset hint system
+    isHintActive = false;
+    currentHintWord = null;
+    hintPositions.clear();
+    hintStep = 0;
+    currentHintLetterIndex = 0;
+  }
+
   void _refreshGame() {
     setState(() {
-      wordsToFind = GameData.createWordsToFind(widget.level.words);
-      foundWordPositions.clear();
-      dragSelection = DragSelection();
-      isHintActive = false;
-      currentHintWord = null;
-      hintPositions.clear();
-      hintStep = 0;
-      currentHintLetterIndex = 0;
+      // Generate new level with shuffled word positions
+      currentLevel = GameData.refreshLevel(currentLevel);
+      _initializeGame();
     });
+
+    print('🎮 Game refreshed! New word positions generated.');
   }
 
   @override
@@ -100,39 +110,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       icon: Icons.arrow_back,
                       onTap: () => Go.backtrack(),
                     ),
-                    // InkWell(
-                    //   onTap: () => Go.backtrack(),
-                    //   child: Container(
-                    //     height: 48,
-                    //     width: 48,
-                    //     decoration: BoxDecoration(
-                    //       color: AppColors.primaryBgColor,
-                    //       borderRadius: BorderRadius.circular(48),
-                    //       border: BoxBorder.all(color: Colors.white),
-                    //     ),
-                    //     child: Icon(
-                    //       Icons.arrow_back,
-                    //       color: Colors.white,
-                    //       size: 28,
-                    //     ),
-                    //   ),
-                    // ),
-                    // ElevatedButton(
-                    //   onPressed: Go.backtrack,
-                    //   child: Icon(
-                    //     Icons.arrow_back,
-                    //     color: Colors.white,
-                    //     size: 28,
-                    //   ),
-                    // ),
-                    // IconButton(
-                    //   onPressed: () => Navigator.pop(context),
-                    //   icon: const Icon(
-                    //     Icons.arrow_back,
-                    //     color: Colors.white,
-                    //     size: 28,
-                    //   ),
-                    // ),
                     Container(
                       padding: AppSizes.paddingXl.symmetric(
                         horizontal: 46.5,
@@ -143,7 +120,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         color: AppColors.primaryBgColor,
                       ),
                       child: Text(
-                        'Level ${widget.level.level}',
+                        'Level ${currentLevel.level}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -151,42 +128,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-
                     IconButtonWidget(
                       icon: Icons.settings,
                       onTap: () => Go.backtrack(),
                     ),
-
-                    // InkWell(
-                    //   onTap: () => Go.backtrack(),
-                    //   child: Container(
-                    //     height: 48,
-                    //     width: 48,
-                    //     decoration: BoxDecoration(
-                    //       color: AppColors.primaryBgColor,
-                    //       borderRadius: BorderRadius.circular(48),
-                    //       border: BoxBorder.all(color: Colors.white),
-                    //     ),
-                    //     child: Icon(
-                    //       Icons.settings,
-                    //       color: Colors.white,
-                    //       size: 28,
-                    //     ),
-                    //   ),
-                    // ),
-                    // Hint button
-                    // IconButton(
-                    //   onPressed: isHintActive ? null : _showHint,
-                    //   icon: Icon(
-                    //     Icons.lightbulb_outline,
-                    //     color: isHintActive ? Colors.grey : Colors.yellow,
-                    //     size: 28,
-                    //   ),
-                    // ),
                   ],
                 ),
               ),
-
               Gap.bottomBarGap,
 
               // Word list to find
@@ -202,7 +150,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                             width: double.infinity,
                             height: 50,
                             margin: const EdgeInsets.symmetric(horizontal: 16),
-                            // height: 10,
                             decoration: BoxDecoration(
                               color: AppColors.primary,
                               gradient: LinearGradient(
@@ -233,7 +180,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                                         color: Colors.black.withAlpha(
                                           (0.2 * 255).toInt(),
                                         ),
-                                        // blurRadius: ,
                                         offset: Offset(1, 5),
                                       ),
                                     ],
@@ -242,9 +188,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                               ),
                             ),
                           ),
-
                           Container(
-                            // width: 400,
                             width: double.infinity,
                             margin: const EdgeInsets.symmetric(horizontal: 16),
                             padding: const EdgeInsets.all(12),
@@ -263,8 +207,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       ),
               ),
 
-              // const SizedBox(height: 20),
-
               // Game grid
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -280,7 +222,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ],
                 ),
                 child: WordGrid(
-                  grid: widget.level.grid,
+                  grid: currentLevel.grid, // Use current level's grid
                   wordsToFind: wordsToFind,
                   dragSelection: dragSelection,
                   onWordFound: _onWordFound,
@@ -302,17 +244,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: isComplete
                     ? InkWell(
                         onTap: () {
-                          final gameLevel =
-                              GameData.getLevels()[widget.level.level];
-                          
-                          
-                          
-                          Go.swapTo(
-                            AppRoutes.game,
-                            arguments: {"level": gameLevel},
-                          );
+                          if (currentLevel.level <
+                              GameData.getLevels().length) {
+                            final nextLevel =
+                                GameData.getLevels()[currentLevel.level];
+                            Go.swapTo(
+                              AppRoutes.game,
+                              arguments: {"level": nextLevel},
+                            );
+                          } else {
+                            // No more levels, go back to level selection
+                            Go.backtrack();
+                          }
                         },
-
                         child: SizedBox(
                           height: 34,
                           width: 116,
@@ -323,17 +267,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           IconButtonWidget(
-                            icon: Icons.lightbulb_outline,
-                            onTap: () {
-                              isHintActive ? null : _showHint();
-                            },
+                            icon: isHintActive
+                                ? Icons.hourglass_top
+                                : Icons.lightbulb_outline,
+                            onTap: isHintActive ? null : _showHint,
+                            iconColor: isHintActive
+                                ? Colors.grey
+                                : Colors.white,
                           ),
-
                           Gap.w16,
-
                           IconButtonWidget(
                             icon: Icons.refresh,
-                            onTap: () => _refreshGame(),
+                            onTap: _refreshGame,
                           ),
                         ],
                       ),
@@ -357,26 +302,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       setState(() {
         isComplete = true;
       });
-      // _showCompletionDialog();
     }
   }
 
-  // NEW: Show hint functionality
+  // Show hint functionality
   void _showHint() async {
-    // Get all unmatched words
     List<WordToFind> unMatchedWords = wordsToFind
         .where((w) => !w.isFound)
         .toList();
-
     if (unMatchedWords.isEmpty) return;
 
-    // Randomly select a word to hint
     unMatchedWords.shuffle();
     WordToFind selectedWord = unMatchedWords.first;
 
-    // Find the word positions in the grid
     List<GridPosition> wordPositions = _findWordInGrid(selectedWord.word);
-
     if (wordPositions.isEmpty) return;
 
     setState(() {
@@ -387,13 +326,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       currentHintLetterIndex = 0;
     });
 
-    // Step 1: Show letters one by one
     await _animateLetterByLetter();
-
-    // Step 2: Flash all letters
     await _flashAllLetters();
 
-    // Reset hint
     setState(() {
       isHintActive = false;
       currentHintWord = null;
@@ -403,48 +338,41 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
-  // Animate letters appearing one by one
   Future<void> _animateLetterByLetter() async {
     for (int i = 0; i < hintPositions.length; i++) {
       setState(() {
         currentHintLetterIndex = i;
       });
-
       _hintAnimationController.reset();
       await _hintAnimationController.forward();
-
-      // Wait a bit before showing next letter
       await Future.delayed(const Duration(milliseconds: 300));
     }
-
-    // Keep all letters visible for a moment
     await Future.delayed(const Duration(milliseconds: 500));
   }
 
-  // Flash all letters at once
   Future<void> _flashAllLetters() async {
     setState(() {
       hintStep = 2;
     });
 
-    // Flash 3 times
     for (int i = 0; i < 3; i++) {
       _flashAnimationController.reset();
       await _flashAnimationController.forward();
       await Future.delayed(const Duration(milliseconds: 100));
     }
-
-    // Keep visible for a moment before hiding
     await Future.delayed(const Duration(milliseconds: 1000));
   }
 
-  // Find word positions in the grid
   List<GridPosition> _findWordInGrid(String word) {
-    // Search in all 8 directions
     List<List<int>> directions = [
-      [-1, -1], [-1, 0], [-1, 1], // Up-left, Up, Up-right
-      [0, -1], [0, 1], // Left, Right
-      [1, -1], [1, 0], [1, 1], // Down-left, Down, Down-right
+      [-1, -1],
+      [-1, 0],
+      [-1, 1],
+      [0, -1],
+      [0, 1],
+      [1, -1],
+      [1, 0],
+      [1, 1],
     ];
 
     for (int row = 0; row < 7; row++) {
@@ -463,11 +391,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         }
       }
     }
-
     return [];
   }
 
-  // Check if word exists at specific position and direction
   List<GridPosition> _checkWordAtPosition(
     String word,
     int startRow,
@@ -476,7 +402,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     int deltaCol,
   ) {
     List<GridPosition> positions = [];
-
     for (int i = 0; i < word.length; i++) {
       int row = startRow + i * deltaRow;
       int col = startCol + i * deltaCol;
@@ -485,35 +410,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         return [];
       }
 
-      if (widget.level.grid[row][col] != word[i]) {
+      if (currentLevel.grid[row][col] != word[i]) {
         return [];
       }
 
       positions.add(GridPosition(row, col));
     }
-
     return positions;
   }
-
-  // void _showCompletionDialog() {
-  //   showDialog(
-  //     context: context,
-  //     barrierDismissible: false,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: const Text('Congratulations!'),
-  //         content: Text('You completed Level ${widget.level.level}!'),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () {
-  //               Navigator.of(context).pop();
-  //               Navigator.of(context).pop(); // Go back to level selection
-  //             },
-  //             child: const Text('Continue'),
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 }
