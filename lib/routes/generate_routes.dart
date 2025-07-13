@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutx_core/flutx_core.dart';
 import 'package:word_game/presentation/screens/game_screen.dart';
 import 'package:word_game/presentation/screens/level_selection_screen.dart';
+import 'package:word_game/presentation/screens/privacy_policy_screen.dart';
 import 'package:word_game/presentation/screens/splash_screen.dart';
 import 'package:word_game/presentation/screens/start_screen.dart';
 
@@ -10,6 +11,7 @@ abstract class AppRoutes {
   static const String start = '/start';
   static const String lavel = '/lavel-screen';
   static const String game = '/game-screen';
+  static const String privacy = '/privacy-screen';
 }
 
 class RouteGenerate {
@@ -40,6 +42,10 @@ class RouteGenerate {
           }
         }
         return _errorRoute();
+
+      /// [Privacy Policy]
+      case AppRoutes.privacy:
+        return SlideLeftTransition(page: PrivacyPolicyScreen());
       default:
         return _errorRoute();
     }

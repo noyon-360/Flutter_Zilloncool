@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutx_core/core/routes/services/go_next_navigation.dart';
+import 'package:word_game/presentation/drawer/custom_drawer.dart';
 import 'package:word_game/routes/generate_routes.dart';
 import '../../data/game_data.dart';
 import '../../models/game_models.dart';
@@ -14,8 +15,13 @@ class LevelSelectionScreen extends StatefulWidget {
 
 class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
   final ScrollController _scrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final double canvasHeight = 3000; // Height for 20 levels
   final int totalLevels = 20;
+
+  // Settings state variables
+  final ValueNotifier<bool> _musicToggleNotifier = ValueNotifier(true);
+  final ValueNotifier<bool> _soundToggleNotifier = ValueNotifier(true);
 
   @override
   void initState() {
@@ -40,6 +46,9 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     final levels = _generateLevels(); // Generate 20 levels
 
     return Scaffold(
+      key: _scaffoldKey,
+      endDrawer: CustomDrawer(),
+
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -90,7 +99,8 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                       ),
                       child: IconButton(
                         onPressed: () {
-                          // Settings action
+                          // Open the settings drawer from right to left
+                          _scaffoldKey.currentState?.openEndDrawer();
                         },
                         icon: const Icon(
                           Icons.settings,
@@ -102,7 +112,6 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   ],
                 ),
               ),
-
               // Scrollable level selection with wavy path
               Expanded(
                 child: SingleChildScrollView(
@@ -123,21 +132,19 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                             ),
                           ),
                         ),
-
                         // Wavy line path
                         CustomPaint(
                           size: Size(size.width, canvasHeight),
                           painter: LevelWavyLinePainter(totalLevels),
                         ),
-
                         // Level buttons positioned exactly on the wavy line
                         ...levels.asMap().entries.map((entry) {
                           int index = entry.key;
-                          var level = entry.value;
-                          
+                          // var level = entry.value;
+
                           // 🔥 FIX: Calculate the DISPLAYED level number (what user sees)
                           int displayedLevelNumber = totalLevels - index;
-                          
+
                           // Calculate exact position on the wavy line
                           final position = _calculateExactLevelPosition(
                             index,
@@ -153,7 +160,9 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                                 // This ensures clicking "Level 20" navigates to actual Level 20
                                 if (displayedLevelNumber <= 5) {
                                   // Only first 5 levels have actual game data
-                                  final gameLevel = GameData.getLevels()[displayedLevelNumber - 1];
+                                  final gameLevel =
+                                      GameData.getLevels()[displayedLevelNumber -
+                                          1];
                                   Go.sailTo(
                                     AppRoutes.game,
                                     arguments: {"level": gameLevel},
@@ -255,7 +264,6 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
         );
       }
     }
-
     return allLevels;
   }
 
@@ -266,7 +274,9 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     final centerX = screenWidth / 2;
 
     // This matches EXACTLY with the LevelWavyLinePainter logic
-    final y1 = waveHeight * (index + 0.5); // Control point Y (where the button should be)
+    final y1 =
+        waveHeight *
+        (index + 0.5); // Control point Y (where the button should be)
     final x1 = index % 2 == 0
         ? centerX - amplitude
         : centerX + amplitude; // Control point X
@@ -317,6 +327,7 @@ class LevelWavyLinePainter extends CustomPainter {
       final x1 = i % 2 == 0
           ? centerX - amplitude
           : centerX + amplitude; // Control point X
+
       final y2 = waveHeight * (i + 1); // End point Y
       final x2 = centerX; // End point X (always center)
 

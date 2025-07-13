@@ -3,6 +3,8 @@ import 'package:flutx_core/core/routes/services/go_next_navigation.dart';
 import 'package:flutx_core/flutx_core.dart';
 import 'package:word_game/routes/generate_routes.dart';
 
+import '../controllers/sound_controller.dart';
+
 class StartScreen extends StatefulWidget {
   const StartScreen({super.key});
 
@@ -46,7 +48,10 @@ class _StartScreenState extends State<StartScreen> {
                 child: Column(
                   children: [
                     InkWell(
-                      onTap: () => Go.sailTo(AppRoutes.lavel),
+                      onTap: () async {
+                        Go.sailTo(AppRoutes.lavel);
+                        await SoundController().playButtonSound();
+                      },
                       child: Image.asset(
                         'assets/play_button.png',
                         width: 239,
