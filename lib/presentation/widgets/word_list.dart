@@ -15,24 +15,21 @@ class WordList extends StatelessWidget {
       children: wordsToFind.map((wordToFind) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: wordToFind.isFound 
-                ? wordToFind.color.withOpacity(0.8)
-                : Colors.grey.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: wordToFind.color,
-              width: 2,
-            ),
-          ),
+          // decoration: BoxDecoration(
+          //   color: wordToFind.isFound
+          //       ? wordToFind.color.withOpacity(0.8)
+          //       : Colors.grey.withOpacity(0.2),
+          //   borderRadius: BorderRadius.circular(20),
+          //   border: Border.all(color: wordToFind.color, width: 2),
+          // ),
           child: Text(
             wordToFind.word,
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
               color: wordToFind.isFound ? Colors.white : Colors.black87,
-              decoration: wordToFind.isFound 
-                  ? TextDecoration.lineThrough 
+              decoration: wordToFind.isFound
+                  ? TextDecoration.lineThrough
                   : TextDecoration.none,
             ),
           ),
