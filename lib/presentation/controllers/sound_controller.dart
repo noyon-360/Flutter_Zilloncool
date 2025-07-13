@@ -23,8 +23,7 @@ class SoundController extends ChangeNotifier {
   // Volume control
   double _musicVolume = 0.7; // Default music volume (70%)
   double _soundVolume = 1.0; // Default sound volume (100%)
-  double _duckingVolume = 0.3; // Music volume when ducking (30%)
-  Duration _duckingFadeDuration = const Duration(milliseconds: 300);
+  final double _duckingVolume = 0.3; // Music volume when ducking (30%)
 
   // Audio file paths
   static const String _backgroundMusicPath = 'background_music.wav';

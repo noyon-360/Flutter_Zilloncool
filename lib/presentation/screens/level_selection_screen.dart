@@ -18,11 +18,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final double canvasHeight = 3000; // Height for 20 levels
   final int totalLevels = 20;
-
-  // Settings state variables
-  final ValueNotifier<bool> _musicToggleNotifier = ValueNotifier(true);
-  final ValueNotifier<bool> _soundToggleNotifier = ValueNotifier(true);
-
+  
   @override
   void initState() {
     super.initState();
