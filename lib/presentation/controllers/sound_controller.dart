@@ -20,6 +20,12 @@ class SoundController extends ChangeNotifier {
   bool _isMusicPlaying = false;
   bool _isInitialized = false;
 
+  // Volume control
+  double _musicVolume = 0.7; // Default music volume (70%)
+  double _soundVolume = 1.0; // Default sound volume (100%)
+  double _duckingVolume = 0.3; // Music volume when ducking (30%)
+  Duration _duckingFadeDuration = const Duration(milliseconds: 300);
+
   // Audio file paths
   static const String _backgroundMusicPath = 'background_music.wav';
   static const String _buttonSoundPath = 'sound_effect.wav';
@@ -29,6 +35,8 @@ class SoundController extends ChangeNotifier {
   bool get isSoundEnabled => _isSoundEnabled;
   bool get isMusicPlaying => _isMusicPlaying;
   bool get isInitialized => _isInitialized;
+  double get musicVolume => _musicVolume;
+  double get soundVolume => _soundVolume;
 
   /// Initialize the sound controller
   Future<void> initialize() async {
@@ -41,17 +49,24 @@ class SoundController extends ChangeNotifier {
 
       // Configure music player for looping
       await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-      await _musicPlayer.setVolume(0.7); // 70% volume for background music
-
-      // Configure sound player
+      
+      // Configure sound player to stop when complete
       await _soundPlayer.setReleaseMode(ReleaseMode.stop);
-      await _soundPlayer.setVolume(1.0); // 100% volume for sound effects
 
-      // Load saved preferences FIRST
+      // Load saved preferences
       await _loadPreferences();
 
-      // Preload audio files for better performance
+      // Set initial volumes
+      await _musicPlayer.setVolume(_musicVolume);
+      await _soundPlayer.setVolume(_soundVolume);
+
+      // Preload audio files
       await _preloadAudio();
+
+      // Setup sound completion handler
+      _soundPlayer.onPlayerComplete.listen((_) {
+        _onSoundComplete();
+      });
 
       _isInitialized = true;
 
@@ -61,8 +76,6 @@ class SoundController extends ChangeNotifier {
       }
 
       DPrint.log('SoundController initialized successfully');
-      
-      // Notify listeners after initialization
       notifyListeners();
     } catch (e) {
       DPrint.log('Error initializing SoundController: $e');
@@ -90,7 +103,12 @@ class SoundController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       _isMusicEnabled = prefs.getBool(KeyConstants.musicEnabled) ?? true;
       _isSoundEnabled = prefs.getBool(KeyConstants.soundEnabled) ?? true;
-      DPrint.log('Loaded preferences - Music: $_isMusicEnabled, Sound: $_isSoundEnabled');
+      _musicVolume = prefs.getDouble(KeyConstants.musicVolume) ?? 0.7;
+      _soundVolume = prefs.getDouble(KeyConstants.soundVolume) ?? 1.0;
+      
+      DPrint.log('Loaded preferences - '
+          'Music: $_isMusicEnabled (vol: $_musicVolume), '
+          'Sound: $_isSoundEnabled (vol: $_soundVolume)');
     } catch (e) {
       DPrint.log('Error loading preferences: $e');
     }
@@ -102,7 +120,12 @@ class SoundController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(KeyConstants.musicEnabled, _isMusicEnabled);
       await prefs.setBool(KeyConstants.soundEnabled, _isSoundEnabled);
-      DPrint.log('Saved preferences - Music: $_isMusicEnabled, Sound: $_isSoundEnabled');
+      await prefs.setDouble(KeyConstants.musicVolume, _musicVolume);
+      await prefs.setDouble(KeyConstants.soundVolume, _soundVolume);
+      
+      DPrint.log('Saved preferences - '
+          'Music: $_isMusicEnabled (vol: $_musicVolume), '
+          'Sound: $_isSoundEnabled (vol: $_soundVolume)');
     } catch (e) {
       DPrint.log('Error saving preferences: $e');
     }
@@ -113,7 +136,6 @@ class SoundController extends ChangeNotifier {
     if (!_isInitialized) await initialize();
 
     _isMusicEnabled = !_isMusicEnabled;
-    
     DPrint.log('Toggling music to: $_isMusicEnabled');
 
     if (_isMusicEnabled) {
@@ -141,7 +163,6 @@ class SoundController extends ChangeNotifier {
     }
 
     _isSoundEnabled = !_isSoundEnabled;
-    
     DPrint.log('Toggling sound to: $_isSoundEnabled');
 
     await _savePreferences();
@@ -180,9 +201,22 @@ class SoundController extends ChangeNotifier {
     }
   }
 
-  /// Internal method to play button sound without additional checks
+  /// When a sound effect completes
+  void _onSoundComplete() {
+    // Restore music volume if it was ducked
+    if (_isMusicPlaying) {
+      _musicPlayer.setVolume(_musicVolume);
+    }
+  }
+
+  /// Internal method to play button sound with ducking
   Future<void> _playButtonSoundInternal() async {
     try {
+      // Duck music volume if music is playing
+      if (_isMusicPlaying) {
+        await _musicPlayer.setVolume(_duckingVolume);
+      }
+
       // Stop any currently playing sound effect
       await _soundPlayer.stop();
 
@@ -223,13 +257,32 @@ class SoundController extends ChangeNotifier {
   /// Set music volume (0.0 to 1.0)
   Future<void> setMusicVolume(double volume) async {
     if (!_isInitialized) return;
-    await _musicPlayer.setVolume(volume.clamp(0.0, 1.0));
+    
+    _musicVolume = volume.clamp(0.0, 1.0);
+    
+    // Only change current volume if not ducked
+    if (!_isSoundPlaying()) {
+      await _musicPlayer.setVolume(_musicVolume);
+    }
+    
+    await _savePreferences();
+    notifyListeners();
   }
 
   /// Set sound effects volume (0.0 to 1.0)
   Future<void> setSoundVolume(double volume) async {
     if (!_isInitialized) return;
-    await _soundPlayer.setVolume(volume.clamp(0.0, 1.0));
+    
+    _soundVolume = volume.clamp(0.0, 1.0);
+    await _soundPlayer.setVolume(_soundVolume);
+    
+    await _savePreferences();
+    notifyListeners();
+  }
+
+  /// Check if a sound is currently playing
+  bool _isSoundPlaying() {
+    return _soundPlayer.state == PlayerState.playing;
   }
 
   /// Dispose resources
