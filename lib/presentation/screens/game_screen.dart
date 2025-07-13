@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutx_core/core/routes/services/go_next_navigation.dart';
-import 'package:flutx_core/core/screen/app_sizes.dart';
 import 'package:flutx_core/flutx_core.dart';
 import 'package:word_game/constants/app_colors.dart';
 import 'package:word_game/presentation/widgets/icon_button_widget.dart';
+import 'package:word_game/routes/generate_routes.dart';
 import '../../data/game_data.dart';
 import '../../models/game_models.dart';
 import '../widgets/word_grid.dart';
@@ -22,6 +22,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late List<WordToFind> wordsToFind;
   late DragSelection dragSelection;
   List<List<GridPosition>> foundWordPositions = [];
+
+  bool isComplete = false;
 
   // Hint system variables
   bool isHintActive = false;
@@ -189,69 +191,76 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
               // Word list to find
               SizedBox(
-                child: Column(
-                  children: [
-                    Container(
-                      width: double.infinity,
-                      height: 50,
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      // height: 10,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        gradient: LinearGradient(
-                          stops: [0.1, 0.2],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            AppColors.primaryGradient,
-                            AppColors.primary,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(10),
-                          topRight: Radius.circular(10),
-                        ),
-                      ),
-                      child: Center(
-                        child: Padding(
-                          padding: AppSizes.paddingSm.vertical,
-                          child: Text(
-                            "WRITTEN",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              shadows: [
-                                Shadow(
-                                  color: Colors.black.withAlpha(
-                                    (0.2 * 255).toInt(),
+                child: isComplete
+                    ? Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Image.asset("assets/congratulations.png"),
+                      )
+                    : Column(
+                        children: [
+                          Container(
+                            width: double.infinity,
+                            height: 50,
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            // height: 10,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              gradient: LinearGradient(
+                                stops: [0.1, 0.2],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  AppColors.primaryGradient,
+                                  AppColors.primary,
+                                ],
+                              ),
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(10),
+                                topRight: Radius.circular(10),
+                              ),
+                            ),
+                            child: Center(
+                              child: Padding(
+                                padding: AppSizes.paddingSm.vertical,
+                                child: Text(
+                                  "WRITTEN",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black.withAlpha(
+                                          (0.2 * 255).toInt(),
+                                        ),
+                                        // blurRadius: ,
+                                        offset: Offset(1, 5),
+                                      ),
+                                    ],
                                   ),
-                                  // blurRadius: ,
-                                  offset: Offset(1, 5),
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    ),
 
-                    Container(
-                      // width: 400,
-                      width: double.infinity,
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha((0.6 * 255).toInt()),
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(10),
-                          bottomRight: Radius.circular(10),
-                        ),
+                          Container(
+                            // width: 400,
+                            width: double.infinity,
+                            margin: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(
+                                (0.6 * 255).toInt(),
+                              ),
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(10),
+                                bottomRight: Radius.circular(10),
+                              ),
+                            ),
+                            child: WordList(wordsToFind: wordsToFind),
+                          ),
+                        ],
                       ),
-                      child: WordList(wordsToFind: wordsToFind),
-                    ),
-                  ],
-                ),
               ),
 
               // const SizedBox(height: 20),
@@ -290,24 +299,44 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
               // Progress indicator
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    IconButtonWidget(
-                      icon: Icons.lightbulb_outline,
-                      onTap: () {
-                        isHintActive ? null : _showHint();
-                      },
-                    ),
+                child: isComplete
+                    ? InkWell(
+                        onTap: () {
+                          final gameLevel =
+                              GameData.getLevels()[widget.level.level];
+                          
+                          
+                          
+                          Go.swapTo(
+                            AppRoutes.game,
+                            arguments: {"level": gameLevel},
+                          );
+                        },
 
-                    Gap.w16,
+                        child: SizedBox(
+                          height: 34,
+                          width: 116,
+                          child: Image.asset("assets/next_level_button.png"),
+                        ),
+                      )
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          IconButtonWidget(
+                            icon: Icons.lightbulb_outline,
+                            onTap: () {
+                              isHintActive ? null : _showHint();
+                            },
+                          ),
 
-                    IconButtonWidget(
-                      icon: Icons.refresh,
-                      onTap: () => _refreshGame(),
-                    ),
-                  ],
-                ),
+                          Gap.w16,
+
+                          IconButtonWidget(
+                            icon: Icons.refresh,
+                            onTap: () => _refreshGame(),
+                          ),
+                        ],
+                      ),
               ),
             ],
           ),
@@ -325,7 +354,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     // Check if all words are found
     if (wordsToFind.every((w) => w.isFound)) {
-      _showCompletionDialog();
+      setState(() {
+        isComplete = true;
+      });
+      // _showCompletionDialog();
     }
   }
 
@@ -463,25 +495,25 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return positions;
   }
 
-  void _showCompletionDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Congratulations!'),
-          content: Text('You completed Level ${widget.level.level}!'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                Navigator.of(context).pop(); // Go back to level selection
-              },
-              child: const Text('Continue'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  // void _showCompletionDialog() {
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: false,
+  //     builder: (BuildContext context) {
+  //       return AlertDialog(
+  //         title: const Text('Congratulations!'),
+  //         content: Text('You completed Level ${widget.level.level}!'),
+  //         actions: [
+  //           TextButton(
+  //             onPressed: () {
+  //               Navigator.of(context).pop();
+  //               Navigator.of(context).pop(); // Go back to level selection
+  //             },
+  //             child: const Text('Continue'),
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
 }

@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
       navigatorObservers: NavigationConfig.navigatorObservers,
       onGenerateRoute: RouteGenerate.generateRoute,
 
-      initialRoute: AppRoutes.lavel,
+      initialRoute: AppRoutes.splash,
     );
   }
 }

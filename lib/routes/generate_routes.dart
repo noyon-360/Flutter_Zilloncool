@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutx_core/flutx_core.dart';
 import 'package:word_game/presentation/screens/game_screen.dart';
 import 'package:word_game/presentation/screens/level_selection_screen.dart';
+import 'package:word_game/presentation/screens/splash_screen.dart';
+import 'package:word_game/presentation/screens/start_screen.dart';
 
-class AppRoutes {
-  static const String start = '/';
+abstract class AppRoutes {
+  static const String splash = '/';
+  static const String start = '/start';
   static const String lavel = '/lavel-screen';
   static const String game = '/game-screen';
 }
@@ -16,9 +19,18 @@ class RouteGenerate {
     final path = uri.path;
 
     switch (path) {
+      case AppRoutes.splash:
+        return FadeRoute(duration: Duration(seconds: 3), page: SplashScreen());
+
+      case AppRoutes.start:
+        return SlideUpTransition(
+          duration: Duration(seconds: 1),
+          page: StartScreen(),
+        );
+
       /// [Level Select Screen]
       case AppRoutes.lavel:
-        return SlideUpTransition(page: LevelSelectionScreen());
+        return SlideLeftTransition(page: LevelSelectionScreen());
 
       case AppRoutes.game:
         if (settings.arguments is Map) {

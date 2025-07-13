@@ -65,9 +65,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         border: Border.all(color: Colors.white, width: 2),
                       ),
                       child: IconButton(
-                        onPressed: () {
-                          // Home action
-                        },
+                        onPressed: () => Go.backtrack(),
                         icon: const Icon(
                           Icons.home,
                           color: Colors.white,
@@ -136,7 +134,10 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         ...levels.asMap().entries.map((entry) {
                           int index = entry.key;
                           var level = entry.value;
-
+                          
+                          // 🔥 FIX: Calculate the DISPLAYED level number (what user sees)
+                          int displayedLevelNumber = totalLevels - index;
+                          
                           // Calculate exact position on the wavy line
                           final position = _calculateExactLevelPosition(
                             index,
@@ -148,11 +149,11 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                             top: position.dy - 30, // Center the 60px button
                             child: GestureDetector(
                               onTap: () {
-                                if (level.level <= 5) {
+                                // 🔥 FIX: Use displayedLevelNumber instead of level.level
+                                // This ensures clicking "Level 20" navigates to actual Level 20
+                                if (displayedLevelNumber <= 5) {
                                   // Only first 5 levels have actual game data
-                                  final gameLevel =
-                                      GameData.getLevels()[level.level - 1];
-
+                                  final gameLevel = GameData.getLevels()[displayedLevelNumber - 1];
                                   Go.sailTo(
                                     AppRoutes.game,
                                     arguments: {"level": gameLevel},
@@ -161,7 +162,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        'Level ${level.level} coming soon!',
+                                        'Level $displayedLevelNumber coming soon!',
                                       ),
                                     ),
                                   );
@@ -206,7 +207,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                                     ),
                                     child: Center(
                                       child: Text(
-                                        '${totalLevels - index}', // Reversed numbering (bottom to top)
+                                        '$displayedLevelNumber', // Use the calculated displayed number
                                         style: TextStyle(
                                           fontSize: 18,
                                           fontWeight: FontWeight.w700,
@@ -233,8 +234,6 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
       ),
     );
   }
-
-  
 
   // Generate 20 levels (using existing 5 levels + placeholders)
   List<GameLevel> _generateLevels() {
@@ -267,9 +266,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     final centerX = screenWidth / 2;
 
     // This matches EXACTLY with the LevelWavyLinePainter logic
-    final y1 =
-        waveHeight *
-        (index + 0.5); // Control point Y (where the button should be)
+    final y1 = waveHeight * (index + 0.5); // Control point Y (where the button should be)
     final x1 = index % 2 == 0
         ? centerX - amplitude
         : centerX + amplitude; // Control point X

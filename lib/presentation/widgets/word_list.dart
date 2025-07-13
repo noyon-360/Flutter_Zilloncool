@@ -11,7 +11,7 @@ class WordList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 8,
-      runSpacing: 8,
+      // runSpacing: 8,
       children: wordsToFind.map((wordToFind) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -27,10 +27,10 @@ class WordList extends StatelessWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w600,
-              color: wordToFind.isFound ? Colors.white : Colors.black87,
-              decoration: wordToFind.isFound
-                  ? TextDecoration.lineThrough
-                  : TextDecoration.none,
+              color: wordToFind.isFound ? Colors.grey[700] : Colors.black87,
+              // decoration: wordToFind.isFound
+              //     ? TextDecoration.lineThrough
+              //     : TextDecoration.none,
             ),
           ),
         );
