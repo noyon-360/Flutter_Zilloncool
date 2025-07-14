@@ -12,112 +12,115 @@ class CustomDrawer extends StatefulWidget {
 }
 
 class _CustomDrawerState extends State<CustomDrawer> {
-  bool _isLoading = true;
+  final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier(true);
+  late SoundController _soundController;
 
   @override
   void initState() {
     super.initState();
+    _soundController = SoundController();
     _initializeController();
   }
 
   Future<void> _initializeController() async {
-    await SoundController().initialize();
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    await _soundController.initialize();
+    _isLoadingNotifier.value = false;
+  }
+
+  @override
+  void dispose() {
+    _isLoadingNotifier.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Drawer(
-        child: SafeArea(child: Center(child: CircularProgressIndicator())),
-      );
-    }
-
     return Drawer(
       child: SafeArea(
-        child: AnimatedBuilder(
-          animation: SoundController(),
-          builder: (context, child) {
-            final soundController = SoundController();
+        child: ValueListenableBuilder<bool>(
+          valueListenable: _isLoadingNotifier,
+          builder: (context, isLoading, child) {
+            if (isLoading) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-            return ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                const SizedBox(height: 20),
-
-                // Music Toggle
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ListTile(
-                    title: const Text(
-                      'Music',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    trailing: CustomToggleButton(
-                      value: soundController.isMusicEnabled,
-                      onChanged: (newValue) async {
-                        if (newValue) {
-                          // When turning music ON, force sound OFF
-                          if (soundController.isSoundEnabled) {
-                            await soundController.toggleSound();
-                          }
-                        }
-                        await soundController.toggleMusic();
-                      },
-                    ),
-                  ),
-                ),
-
-                // Sound Effects Toggle
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ListTile(
-                    title: const Text(
-                      'Sound',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    trailing: Opacity(
-                      opacity: soundController.isMusicEnabled ? 0.5 : 1.0,
-                      child: CustomToggleButton(
-                        value: soundController.isSoundEnabled,
-                        onChanged: soundController.isMusicEnabled
-                            ? null
-                            : (newValue) async {
-                                await soundController.toggleSound();
+            return ValueListenableBuilder<bool>(
+              valueListenable: _soundController.musicEnabledNotifier,
+              builder: (context, isMusicEnabled, child) {
+                return ValueListenableBuilder<bool>(
+                  valueListenable: _soundController.soundEnabledNotifier,
+                  builder: (context, isSoundEnabled, child) {
+                    return ListView(
+                      padding: EdgeInsets.zero,
+                      children: [
+                        const SizedBox(height: 20),
+                        // Music Toggle
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ListTile(
+                            title: const Text(
+                              'Music',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            trailing: CustomToggleButton(
+                              value: isMusicEnabled,
+                              onChanged: (newValue) async {
+                                if (newValue && isSoundEnabled) {
+                                  await _soundController.toggleSound();
+                                }
+                                await _soundController.toggleMusic();
                               },
-                      ),
-                    ),
-                  ),
-                ),
-
-                const Divider(),
-                const SizedBox(height: 20),
-
-                // Privacy Policy Button
-                Center(
-                  child: InkWell(
-                    onTap: () async {
-                      await SoundController().playButtonSound();
-                      Go.sailTo(AppRoutes.privacy);
-                    },
-                    child: SizedBox(
-                      height: 40,
-                      width: 180,
-                      child: Image.asset("assets/privacy_policy_button.png"),
-                    ),
-                  ),
-                ),
-              ],
+                            ),
+                          ),
+                        ),
+                        // Sound Effects Toggle
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: ListTile(
+                            title: const Text(
+                              'Sound',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            trailing: Opacity(
+                              opacity: isMusicEnabled ? 0.5 : 1.0,
+                              child: CustomToggleButton(
+                                value: isSoundEnabled,
+                                onChanged: isMusicEnabled
+                                    ? null
+                                    : (newValue) async {
+                                        await _soundController.toggleSound();
+                                      },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Divider(),
+                        const SizedBox(height: 20),
+                        // Privacy Policy Button
+                        Center(
+                          child: InkWell(
+                            onTap: () async {
+                              await _soundController.playButtonSound();
+                              Go.sailTo(AppRoutes.privacy);
+                            },
+                            child: SizedBox(
+                              height: 40,
+                              width: 180,
+                              child: Image.asset("assets/privacy_policy_button.png"),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
             );
           },
         ),

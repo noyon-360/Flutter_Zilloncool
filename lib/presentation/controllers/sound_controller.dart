@@ -1,300 +1,53 @@
-import 'package:flutter/services.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:flutx_core/core/debug_print.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:word_game/constants/key_constants.dart';
 import 'package:flutter/material.dart';
+import 'isolate_sound_controller.dart';
 
-class SoundController extends ChangeNotifier {
+/// Adapter to maintain backward compatibility with existing code
+class SoundController {
   static final SoundController _instance = SoundController._internal();
   factory SoundController() => _instance;
   SoundController._internal();
 
-  // Audio players
-  late AudioPlayer _musicPlayer;
-  late AudioPlayer _soundPlayer;
+  final OptimizedSoundController _optimizedController = OptimizedSoundController();
 
-  // State management
-  bool _isMusicEnabled = true;
-  bool _isSoundEnabled = true;
-  bool _isMusicPlaying = false;
-  bool _isInitialized = false;
+  // Delegate all calls to the optimized controller
+  ValueNotifier<bool> get musicEnabledNotifier => _optimizedController.musicEnabledNotifier;
+  ValueNotifier<bool> get soundEnabledNotifier => _optimizedController.soundEnabledNotifier;
+  ValueNotifier<bool> get hapticEnabledNotifier => _optimizedController.hapticEnabledNotifier;
+  ValueNotifier<bool> get musicPlayingNotifier => _optimizedController.musicPlayingNotifier;
+  ValueNotifier<bool> get initializedNotifier => _optimizedController.initializedNotifier;
+  ValueNotifier<bool> get draggingNotifier => _optimizedController.draggingNotifier;
 
-  // Volume control
-  double _musicVolume = 0.7; // Default music volume (70%)
-  double _soundVolume = 1.0; // Default sound volume (100%)
-  final double _duckingVolume = 0.3; // Music volume when ducking (30%)
+  bool get isMusicEnabled => _optimizedController.isMusicEnabled;
+  bool get isSoundEnabled => _optimizedController.isSoundEnabled;
+  bool get isHapticEnabled => _optimizedController.isHapticEnabled;
+  bool get isMusicPlaying => _optimizedController.isMusicPlaying;
+  bool get isInitialized => _optimizedController.isInitialized;
+  bool get isDragging => _optimizedController.isDragging;
 
-  // Audio file paths
-  static const String _backgroundMusicPath = 'background_music.wav';
-  static const String _buttonSoundPath = 'sound_effect.wav';
+  Future<void> initialize() => _optimizedController.initialize();
+  Future<void> playDragStart() => _optimizedController.playDragStart();
+  Future<void> playDragStep() => _optimizedController.playDragStep();
+  Future<void> playDragEnd({bool isValidWord = false}) => _optimizedController.playDragEnd(isValidWord: isValidWord);
+  Future<void> playWordFound() => _optimizedController.playWordFound();
+  Future<void> playWordMatch() => _optimizedController.playWordMatch();
+  Future<void> playLevelComplete() => _optimizedController.playLevelComplete();
+  Future<void> playHintActivate() => _optimizedController.playHintActivate();
+  Future<void> playHintReveal() => _optimizedController.playHintReveal();
+  Future<void> playGameRefresh() => _optimizedController.playGameRefresh();
+  Future<void> playInvalidSelection() => _optimizedController.playInvalidSelection();
+  Future<void> playButtonSound() => _optimizedController.playButtonSound();
+  Future<void> toggleMusic() => _optimizedController.toggleMusic();
+  Future<void> toggleSound() => _optimizedController.toggleSound();
+  Future<void> toggleHaptic() => _optimizedController.toggleHaptic();
+  Future<void> setMusicVolume(double volume) => _optimizedController.setMusicVolume(volume);
+  Future<void> setSoundVolume(double volume) => _optimizedController.setSoundVolume(volume);
+  Future<void> setDragSoundVolume(double volume) => _optimizedController.setDragSoundVolume(volume);
+  Future<void> resumeMusic() => _optimizedController.resumeMusic();
+  Future<void> pauseMusic() => _optimizedController.pauseMusic();
+  Future<void> dispose() => _optimizedController.dispose();
 
-  // Getters
-  bool get isMusicEnabled => _isMusicEnabled;
-  bool get isSoundEnabled => _isSoundEnabled;
-  bool get isMusicPlaying => _isMusicPlaying;
-  bool get isInitialized => _isInitialized;
-  double get musicVolume => _musicVolume;
-  double get soundVolume => _soundVolume;
-
-  /// Initialize the sound controller
-  Future<void> initialize() async {
-    if (_isInitialized) return;
-
-    try {
-      // Initialize audio players
-      _musicPlayer = AudioPlayer();
-      _soundPlayer = AudioPlayer();
-
-      // Configure music player for looping
-      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-      
-      // Configure sound player to stop when complete
-      await _soundPlayer.setReleaseMode(ReleaseMode.stop);
-
-      // Load saved preferences
-      await _loadPreferences();
-
-      // Set initial volumes
-      await _musicPlayer.setVolume(_musicVolume);
-      await _soundPlayer.setVolume(_soundVolume);
-
-      // Preload audio files
-      await _preloadAudio();
-
-      // Setup sound completion handler
-      _soundPlayer.onPlayerComplete.listen((_) {
-        _onSoundComplete();
-      });
-
-      _isInitialized = true;
-
-      // Start background music if enabled
-      if (_isMusicEnabled) {
-        await _startBackgroundMusic();
-      }
-
-      DPrint.log('SoundController initialized successfully');
-      notifyListeners();
-    } catch (e) {
-      DPrint.log('Error initializing SoundController: $e');
-    }
-  }
-
-  /// Preload audio files for better performance
-  Future<void> _preloadAudio() async {
-    try {
-      // Preload background music
-      await _musicPlayer.setSource(AssetSource(_backgroundMusicPath));
-
-      // Preload button sound
-      await _soundPlayer.setSource(AssetSource(_buttonSoundPath));
-
-      DPrint.log('Audio files preloaded successfully');
-    } catch (e) {
-      DPrint.log('Error preloading audio: $e');
-    }
-  }
-
-  /// Load preferences from SharedPreferences
-  Future<void> _loadPreferences() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      _isMusicEnabled = prefs.getBool(KeyConstants.musicEnabled) ?? true;
-      _isSoundEnabled = prefs.getBool(KeyConstants.soundEnabled) ?? true;
-      _musicVolume = prefs.getDouble(KeyConstants.musicVolume) ?? 0.7;
-      _soundVolume = prefs.getDouble(KeyConstants.soundVolume) ?? 1.0;
-      
-      DPrint.log('Loaded preferences - '
-          'Music: $_isMusicEnabled (vol: $_musicVolume), '
-          'Sound: $_isSoundEnabled (vol: $_soundVolume)');
-    } catch (e) {
-      DPrint.log('Error loading preferences: $e');
-    }
-  }
-
-  /// Save preferences to SharedPreferences
-  Future<void> _savePreferences() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(KeyConstants.musicEnabled, _isMusicEnabled);
-      await prefs.setBool(KeyConstants.soundEnabled, _isSoundEnabled);
-      await prefs.setDouble(KeyConstants.musicVolume, _musicVolume);
-      await prefs.setDouble(KeyConstants.soundVolume, _soundVolume);
-      
-      DPrint.log('Saved preferences - '
-          'Music: $_isMusicEnabled (vol: $_musicVolume), '
-          'Sound: $_isSoundEnabled (vol: $_soundVolume)');
-    } catch (e) {
-      DPrint.log('Error saving preferences: $e');
-    }
-  }
-
-  /// Toggle music on/off
-  Future<void> toggleMusic() async {
-    if (!_isInitialized) await initialize();
-
-    _isMusicEnabled = !_isMusicEnabled;
-    DPrint.log('Toggling music to: $_isMusicEnabled');
-
-    if (_isMusicEnabled) {
-      await _startBackgroundMusic();
-    } else {
-      await _stopBackgroundMusic();
-    }
-
-    await _savePreferences();
-    notifyListeners();
-
-    // Haptic feedback only if sound is enabled
-    if (_isSoundEnabled) {
-      HapticFeedback.lightImpact();
-    }
-  }
-
-  /// Toggle sound effects on/off
-  Future<void> toggleSound() async {
-    if (!_isInitialized) await initialize();
-
-    // Play button sound BEFORE toggling if sound is currently enabled
-    if (_isSoundEnabled) {
-      await _playButtonSoundInternal();
-    }
-
-    _isSoundEnabled = !_isSoundEnabled;
-    DPrint.log('Toggling sound to: $_isSoundEnabled');
-
-    await _savePreferences();
-    notifyListeners();
-
-    // Play confirmation sound if sound was just enabled
-    if (_isSoundEnabled) {
-      await _playButtonSoundInternal();
-    }
-  }
-
-  /// Start background music
-  Future<void> _startBackgroundMusic() async {
-    if (!_isMusicEnabled || _isMusicPlaying) return;
-
-    try {
-      await _musicPlayer.setSource(AssetSource(_backgroundMusicPath));
-      await _musicPlayer.resume();
-      _isMusicPlaying = true;
-      DPrint.log('Background music started');
-    } catch (e) {
-      DPrint.log('Error starting background music: $e');
-    }
-  }
-
-  /// Stop background music
-  Future<void> _stopBackgroundMusic() async {
-    if (!_isMusicPlaying) return;
-
-    try {
-      await _musicPlayer.pause();
-      _isMusicPlaying = false;
-      DPrint.log('Background music stopped');
-    } catch (e) {
-      DPrint.log('Error stopping background music: $e');
-    }
-  }
-
-  /// When a sound effect completes
-  void _onSoundComplete() {
-    // Restore music volume if it was ducked
-    if (_isMusicPlaying) {
-      _musicPlayer.setVolume(_musicVolume);
-    }
-  }
-
-  /// Internal method to play button sound with ducking
-  Future<void> _playButtonSoundInternal() async {
-    try {
-      // Duck music volume if music is playing
-      if (_isMusicPlaying) {
-        await _musicPlayer.setVolume(_duckingVolume);
-      }
-
-      // Stop any currently playing sound effect
-      await _soundPlayer.stop();
-
-      // Play button sound
-      await _soundPlayer.setSource(AssetSource(_buttonSoundPath));
-      await _soundPlayer.resume();
-
-      // Add haptic feedback
-      HapticFeedback.selectionClick();
-    } catch (e) {
-      DPrint.log('Error playing button sound: $e');
-    }
-  }
-
-  /// Play button click sound (public method)
-  Future<void> playButtonSound() async {
-    if (!_isInitialized) await initialize();
-    if (!_isSoundEnabled) return;
-
-    await _playButtonSoundInternal();
-  }
-
-  /// Resume music when app comes to foreground
-  Future<void> resumeMusic() async {
-    if (_isMusicEnabled && !_isMusicPlaying) {
-      await _startBackgroundMusic();
-    }
-  }
-
-  /// Pause music when app goes to background
-  Future<void> pauseMusic() async {
-    if (_isMusicPlaying) {
-      await _musicPlayer.pause();
-      _isMusicPlaying = false;
-    }
-  }
-
-  /// Set music volume (0.0 to 1.0)
-  Future<void> setMusicVolume(double volume) async {
-    if (!_isInitialized) return;
-    
-    _musicVolume = volume.clamp(0.0, 1.0);
-    
-    // Only change current volume if not ducked
-    if (!_isSoundPlaying()) {
-      await _musicPlayer.setVolume(_musicVolume);
-    }
-    
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  /// Set sound effects volume (0.0 to 1.0)
-  Future<void> setSoundVolume(double volume) async {
-    if (!_isInitialized) return;
-    
-    _soundVolume = volume.clamp(0.0, 1.0);
-    await _soundPlayer.setVolume(_soundVolume);
-    
-    await _savePreferences();
-    notifyListeners();
-  }
-
-  /// Check if a sound is currently playing
-  bool _isSoundPlaying() {
-    return _soundPlayer.state == PlayerState.playing;
-  }
-
-  /// Dispose resources
-  @override
-  Future<void> dispose() async {
-    try {
-      await _musicPlayer.dispose();
-      await _soundPlayer.dispose();
-      _isInitialized = false;
-      DPrint.log('SoundController disposed');
-    } catch (e) {
-      DPrint.log('Error disposing SoundController: $e');
-    }
-    super.dispose();
-  }
+  // Additional performance monitoring methods
+  Map<String, dynamic> getPerformanceMetrics() => _optimizedController.getPerformanceMetrics();
+  ValueNotifier<int> get soundQueueLength => _optimizedController.soundQueueLength;
+  ValueNotifier<double> get averageResponseTime => _optimizedController.averageResponseTime;
 }

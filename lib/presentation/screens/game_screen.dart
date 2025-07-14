@@ -6,12 +6,12 @@ import 'package:word_game/presentation/widgets/icon_button_widget.dart';
 import 'package:word_game/routes/generate_routes.dart';
 import '../../data/game_data.dart';
 import '../../models/game_models.dart';
+import '../controllers/sound_controller.dart';
 import '../widgets/word_grid.dart';
 import '../widgets/word_list.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
-
   const GameScreen({super.key, required this.level});
 
   @override
@@ -19,28 +19,46 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
-  late GameLevel currentLevel; // Store current level state
+  late GameLevel currentLevel;
   late List<WordToFind> wordsToFind;
   late DragSelection dragSelection;
-  List<List<GridPosition>> foundWordPositions = [];
-  bool isComplete = false;
 
-  // Hint system variables
-  bool isHintActive = false;
-  WordToFind? currentHintWord;
-  List<GridPosition> hintPositions = [];
-  int hintStep = 0;
-  int currentHintLetterIndex = 0;
+  // Value Notifiers for state management
+  final ValueNotifier<List<List<GridPosition>>> foundWordPositionsNotifier =
+      ValueNotifier([]);
+  final ValueNotifier<bool> isCompleteNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> isHintActiveNotifier = ValueNotifier(false);
+  final ValueNotifier<WordToFind?> currentHintWordNotifier = ValueNotifier(
+    null,
+  );
+  final ValueNotifier<List<GridPosition>> hintPositionsNotifier = ValueNotifier(
+    [],
+  );
+  final ValueNotifier<int> hintStepNotifier = ValueNotifier(0);
+  final ValueNotifier<int> currentHintLetterIndexNotifier = ValueNotifier(0);
+  final ValueNotifier<List<String>> foundWordsNotifier = ValueNotifier([]);
+
+  // Add ValueNotifier for grid to make it reactive
+  final ValueNotifier<List<List<String>>> gridNotifier = ValueNotifier([]);
+
+  // Enhanced sound controller
+  final SoundController _soundController = SoundController();
+
+  // Animation controllers
   late AnimationController _hintAnimationController;
   late AnimationController _flashAnimationController;
+  late AnimationController _celebrationController;
 
   @override
   void initState() {
     super.initState();
-    currentLevel = widget.level; // Initialize with passed level
+    currentLevel = widget.level;
     _initializeGame();
+    _initializeAnimations();
+    _initializeSound();
+  }
 
-    // Initialize hint animation controllers
+  void _initializeAnimations() {
     _hintAnimationController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
@@ -49,36 +67,62 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
+    _celebrationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+  }
+
+  void _initializeSound() async {
+    await _soundController.initialize();
   }
 
   void _initializeGame() {
     wordsToFind = GameData.createWordsToFind(currentLevel.words);
     dragSelection = DragSelection();
-    foundWordPositions.clear();
-    isComplete = false;
+    foundWordPositionsNotifier.value = [];
+    isCompleteNotifier.value = false;
+    foundWordsNotifier.value = [];
+
+    // Update grid notifier with new grid data - this triggers the rebuild
+    gridNotifier.value = List.from(
+      currentLevel.grid.map((row) => List<String>.from(row)),
+    );
 
     // Reset hint system
-    isHintActive = false;
-    currentHintWord = null;
-    hintPositions.clear();
-    hintStep = 0;
-    currentHintLetterIndex = 0;
+    isHintActiveNotifier.value = false;
+    currentHintWordNotifier.value = null;
+    hintPositionsNotifier.value = [];
+    hintStepNotifier.value = 0;
+    currentHintLetterIndexNotifier.value = 0;
   }
 
-  void _refreshGame() {
-    setState(() {
-      // Generate new level with shuffled word positions
-      currentLevel = GameData.refreshLevel(currentLevel);
-      _initializeGame();
-    });
+  void _refreshGame() async {
+    await _soundController.playGameRefresh();
+
+    // Get new level with refreshed grid
+    currentLevel = GameData.refreshLevel(currentLevel);
+
+    // Reinitialize game with new data
+    _initializeGame();
 
     print('🎮 Game refreshed! New word positions generated.');
   }
 
   @override
   void dispose() {
+    foundWordPositionsNotifier.dispose();
+    isCompleteNotifier.dispose();
+    isHintActiveNotifier.dispose();
+    currentHintWordNotifier.dispose();
+    hintPositionsNotifier.dispose();
+    hintStepNotifier.dispose();
+    currentHintLetterIndexNotifier.dispose();
+    foundWordsNotifier.dispose();
+    gridNotifier.dispose(); // Don't forget to dispose the new notifier
     _hintAnimationController.dispose();
     _flashAnimationController.dispose();
+    _celebrationController.dispose();
     super.dispose();
   }
 
@@ -108,7 +152,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   children: [
                     IconButtonWidget(
                       icon: Icons.arrow_back,
-                      onTap: () => Go.backtrack(),
+                      onTap: () async {
+                        await _soundController.playButtonSound();
+                        Go.backtrack();
+                      },
                     ),
                     Container(
                       padding: AppSizes.paddingXl.symmetric(
@@ -130,84 +177,27 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     ),
                     IconButtonWidget(
                       icon: Icons.settings,
-                      onTap: () => Go.backtrack(),
+                      onTap: () async {
+                        await _soundController.playButtonSound();
+                        Go.backtrack();
+                      },
                     ),
                   ],
                 ),
               ),
               Gap.bottomBarGap,
-
-              // Word list to find
-              SizedBox(
-                child: isComplete
-                    ? Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Image.asset("assets/congratulations.png"),
-                      )
-                    : Column(
-                        children: [
-                          Container(
-                            width: double.infinity,
-                            height: 50,
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              gradient: LinearGradient(
-                                stops: [0.1, 0.2],
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  AppColors.primaryGradient,
-                                  AppColors.primary,
-                                ],
-                              ),
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(10),
-                                topRight: Radius.circular(10),
-                              ),
-                            ),
-                            child: Center(
-                              child: Padding(
-                                padding: AppSizes.paddingSm.vertical,
-                                child: Text(
-                                  "WRITTEN",
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.white,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black.withAlpha(
-                                          (0.2 * 255).toInt(),
-                                        ),
-                                        offset: Offset(1, 5),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            width: double.infinity,
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(
-                                (0.6 * 255).toInt(),
-                              ),
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(10),
-                                bottomRight: Radius.circular(10),
-                              ),
-                            ),
-                            child: WordList(wordsToFind: wordsToFind),
-                          ),
-                        ],
-                      ),
+              // Word list or completion message
+              ValueListenableBuilder<bool>(
+                valueListenable: isCompleteNotifier,
+                builder: (context, isComplete, child) {
+                  return SizedBox(
+                    child: isComplete
+                        ? _buildCompletionWidget()
+                        : _buildWordListWidget(),
+                  );
+                },
               ),
-
-              // Game grid
+              // Enhanced Game grid with ValueListenableBuilder for reactive updates
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
@@ -221,67 +211,40 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
-                child: WordGrid(
-                  grid: currentLevel.grid, // Use current level's grid
-                  wordsToFind: wordsToFind,
-                  dragSelection: dragSelection,
-                  onWordFound: _onWordFound,
-                  foundWordPositions: foundWordPositions,
-                  // Pass hint data to grid
-                  isHintActive: isHintActive,
-                  currentHintWord: currentHintWord,
-                  hintPositions: hintPositions,
-                  hintStep: hintStep,
-                  currentHintLetterIndex: currentHintLetterIndex,
-                  hintAnimationController: _hintAnimationController,
-                  flashAnimationController: _flashAnimationController,
+                child: ValueListenableBuilder<List<List<String>>>(
+                  valueListenable: gridNotifier,
+                  builder: (context, grid, child) {
+                    return WordGrid(
+                      grid: grid, // Use the reactive grid data
+                      wordsToFind: wordsToFind,
+                      dragSelection: dragSelection,
+                      onWordFound: _onWordFound,
+                      foundWordPositionsNotifier: foundWordPositionsNotifier,
+                      soundController: _soundController,
+                      // Hint data
+                      isHintActiveNotifier: isHintActiveNotifier,
+                      currentHintWordNotifier: currentHintWordNotifier,
+                      hintPositionsNotifier: hintPositionsNotifier,
+                      hintStepNotifier: hintStepNotifier,
+                      currentHintLetterIndexNotifier:
+                          currentHintLetterIndexNotifier,
+                      hintAnimationController: _hintAnimationController,
+                      flashAnimationController: _flashAnimationController,
+                    );
+                  },
                 ),
               ),
-
-              // Progress indicator
+              // Control buttons
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: isComplete
-                    ? InkWell(
-                        onTap: () {
-                          if (currentLevel.level <
-                              GameData.getLevels().length) {
-                            final nextLevel =
-                                GameData.getLevels()[currentLevel.level];
-                            Go.swapTo(
-                              AppRoutes.game,
-                              arguments: {"level": nextLevel},
-                            );
-                          } else {
-                            // No more levels, go back to level selection
-                            Go.backtrack();
-                          }
-                        },
-                        child: SizedBox(
-                          height: 34,
-                          width: 116,
-                          child: Image.asset("assets/next_level_button.png"),
-                        ),
-                      )
-                    : Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButtonWidget(
-                            icon: isHintActive
-                                ? Icons.hourglass_top
-                                : Icons.lightbulb_outline,
-                            onTap: isHintActive ? null : _showHint,
-                            iconColor: isHintActive
-                                ? Colors.grey
-                                : Colors.white,
-                          ),
-                          Gap.w16,
-                          IconButtonWidget(
-                            icon: Icons.refresh,
-                            onTap: _refreshGame,
-                          ),
-                        ],
-                      ),
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: isCompleteNotifier,
+                  builder: (context, isComplete, child) {
+                    return isComplete
+                        ? _buildNextLevelButton()
+                        : _buildControlButtons();
+                  },
+                ),
               ),
             ],
           ),
@@ -290,23 +253,160 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  void _onWordFound(WordToFind word, List<GridPosition> positions) {
-    setState(() {
-      word.isFound = true;
-      word.foundPositions = positions;
-      foundWordPositions.add(positions);
-    });
+  Widget _buildCompletionWidget() {
+    return AnimatedBuilder(
+      animation: _celebrationController,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: 1.0 + (_celebrationController.value * 0.1),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: Image.asset("assets/congratulations.png"),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWordListWidget() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          height: 50,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            gradient: LinearGradient(
+              stops: [0.1, 0.2],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [AppColors.primaryGradient, AppColors.primary],
+            ),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(10),
+              topRight: Radius.circular(10),
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: AppSizes.paddingSm.vertical,
+              child: Text(
+                "WRITTEN",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withAlpha((0.2 * 255).toInt()),
+                      offset: Offset(1, 5),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha((0.6 * 255).toInt()),
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(10),
+              bottomRight: Radius.circular(10),
+            ),
+          ),
+          child: WordList(
+            wordsToFind: wordsToFind,
+            foundWordsNotifier: foundWordsNotifier,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNextLevelButton() {
+    return InkWell(
+      onTap: () async {
+        await _soundController.playButtonSound();
+        if (currentLevel.level < GameData.getLevels().length) {
+          final nextLevel = GameData.getLevels()[currentLevel.level];
+          Go.swapTo(AppRoutes.game, arguments: {"level": nextLevel});
+        } else {
+          Go.backtrack();
+        }
+      },
+      child: SizedBox(
+        height: 34,
+        width: 116,
+        child: Image.asset("assets/next_level_button.png"),
+      ),
+    );
+  }
+
+  Widget _buildControlButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        ValueListenableBuilder<bool>(
+          valueListenable: isHintActiveNotifier,
+          builder: (context, isHintActive, child) {
+            return IconButtonWidget(
+              icon: isHintActive
+                  ? Icons.hourglass_top
+                  : Icons.lightbulb_outline,
+              onTap: isHintActive ? null : _showHint,
+              iconColor: isHintActive ? Colors.grey : Colors.white,
+            );
+          },
+        ),
+        Gap.w16,
+        // Add visual feedback for refresh button
+        ValueListenableBuilder<bool>(
+          valueListenable: isHintActiveNotifier,
+          builder: (context, isHintActive, child) {
+            return IconButtonWidget(
+              icon: Icons.refresh,
+              onTap: isHintActive ? null : _refreshGame, // Disable during hint
+              iconColor: isHintActive ? Colors.grey : Colors.white,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  void _onWordFound(WordToFind word, List<GridPosition> positions) async {
+    await _soundController.playWordFound();
+    word.isFound = true;
+    word.foundPositions = positions;
+
+    final currentFoundPositions = List<List<GridPosition>>.from(
+      foundWordPositionsNotifier.value,
+    );
+    currentFoundPositions.add(positions);
+    foundWordPositionsNotifier.value = currentFoundPositions;
+
+    // Update found words list
+    final currentFoundWords = List<String>.from(foundWordsNotifier.value);
+    currentFoundWords.add(word.word);
+    foundWordsNotifier.value = currentFoundWords;
 
     // Check if all words are found
     if (wordsToFind.every((w) => w.isFound)) {
-      setState(() {
-        isComplete = true;
-      });
+      isCompleteNotifier.value = true;
+      await _soundController.playLevelComplete();
+      _celebrationController.forward();
+    } else {
+      await _soundController.playWordMatch();
     }
   }
 
-  // Show hint functionality
   void _showHint() async {
+    await _soundController.playHintActivate();
     List<WordToFind> unMatchedWords = wordsToFind
         .where((w) => !w.isFound)
         .toList();
@@ -314,35 +414,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     unMatchedWords.shuffle();
     WordToFind selectedWord = unMatchedWords.first;
-
     List<GridPosition> wordPositions = _findWordInGrid(selectedWord.word);
     if (wordPositions.isEmpty) return;
 
-    setState(() {
-      isHintActive = true;
-      currentHintWord = selectedWord;
-      hintPositions = wordPositions;
-      hintStep = 1;
-      currentHintLetterIndex = 0;
-    });
+    isHintActiveNotifier.value = true;
+    currentHintWordNotifier.value = selectedWord;
+    hintPositionsNotifier.value = wordPositions;
+    hintStepNotifier.value = 1;
+    currentHintLetterIndexNotifier.value = 0;
 
     await _animateLetterByLetter();
     await _flashAllLetters();
 
-    setState(() {
-      isHintActive = false;
-      currentHintWord = null;
-      hintPositions = [];
-      hintStep = 0;
-      currentHintLetterIndex = 0;
-    });
+    isHintActiveNotifier.value = false;
+    currentHintWordNotifier.value = null;
+    hintPositionsNotifier.value = [];
+    hintStepNotifier.value = 0;
+    currentHintLetterIndexNotifier.value = 0;
   }
 
   Future<void> _animateLetterByLetter() async {
-    for (int i = 0; i < hintPositions.length; i++) {
-      setState(() {
-        currentHintLetterIndex = i;
-      });
+    final positions = hintPositionsNotifier.value;
+    for (int i = 0; i < positions.length; i++) {
+      currentHintLetterIndexNotifier.value = i;
+      await _soundController.playHintReveal();
       _hintAnimationController.reset();
       await _hintAnimationController.forward();
       await Future.delayed(const Duration(milliseconds: 300));
@@ -351,10 +446,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _flashAllLetters() async {
-    setState(() {
-      hintStep = 2;
-    });
-
+    hintStepNotifier.value = 2;
     for (int i = 0; i < 3; i++) {
       _flashAnimationController.reset();
       await _flashAnimationController.forward();
@@ -405,15 +497,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     for (int i = 0; i < word.length; i++) {
       int row = startRow + i * deltaRow;
       int col = startCol + i * deltaCol;
-
       if (row < 0 || row >= 7 || col < 0 || col >= 7) {
         return [];
       }
-
       if (currentLevel.grid[row][col] != word[i]) {
         return [];
       }
-
       positions.add(GridPosition(row, col));
     }
     return positions;
