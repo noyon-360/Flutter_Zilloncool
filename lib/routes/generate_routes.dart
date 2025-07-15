@@ -38,7 +38,12 @@ class RouteGenerate {
         if (settings.arguments is Map) {
           final arg = settings.arguments as Map;
           if (arg['level'] != null) {
-            return SlideLeftTransition(page: GameScreen(level: arg['level']));
+            return SlideLeftTransition(
+              page: GameScreen(
+                level: arg['level'],
+                // scaffoldKey: arg['scaffoldKey'],
+              ),
+            );
           }
         }
         return _errorRoute();

@@ -130,7 +130,7 @@ class OptimizedSoundController {
 
   // Audio file paths
   static const String _backgroundMusicPath = 'background_music.wav';
-  static const String _buttonSoundPath = 'button_click.wav';
+  static const String _buttonSoundPath = 'sound_effect.wav';
   static const String _dragStartPath = 'match_success.wav';
   static const String _dragStepPath = 'match_success.wav';
   static const String _wordMatchPath = 'match_success.wav';
@@ -993,10 +993,7 @@ class IsolateSoundSystem {
         case SoundCommand.dispose:
           await _dispose();
           break;
-        default:
-          success = false;
-          error = 'Unknown command';
-      }
+        }
       
       // Send response back to main thread
       if (message.responseId != null) {

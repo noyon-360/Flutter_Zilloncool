@@ -18,7 +18,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final double canvasHeight = 3000; // Height for 20 levels
   final int totalLevels = 20;
-  
+
   @override
   void initState() {
     super.initState();
@@ -47,15 +47,128 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
 
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF4A90E2), Color(0xFF7BB3F0), Color(0xFFB8D4F0)],
+          image: DecorationImage(
+            fit: BoxFit.cover,
+            image: AssetImage('assets/level_screen_bg.jpeg'),
           ),
         ),
         child: SafeArea(
-          child: Column(
+          child: Stack(
             children: [
+              // Scrollable level selection with wavy path
+              SingleChildScrollView(
+                controller: _scrollController,
+                reverse: true, // Start from bottom
+                child: SizedBox(
+                  height: canvasHeight,
+                  width: size.width,
+                  child: Stack(
+                    children: [
+                      // Wavy line path
+                      CustomPaint(
+                        size: Size(size.width, canvasHeight),
+                        painter: LevelWavyLinePainter(totalLevels),
+                      ),
+                      // Level buttons positioned exactly on the wavy line
+                      ...levels.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        // var level = entry.value;
+
+                        // 🔥 FIX: Calculate the DISPLAYED level number (what user sees)
+                        int displayedLevelNumber = totalLevels - index;
+
+                        // Calculate exact position on the wavy line
+                        final position = _calculateExactLevelPosition(
+                          index,
+                          size.width,
+                        );
+
+                        return Positioned(
+                          left: position.dx - 30, // Center the 60px button
+                          top: position.dy - 30, // Center the 60px button
+                          child: GestureDetector(
+                            onTap: () {
+                              // 🔥 FIX: Use displayedLevelNumber instead of level.level
+                              // This ensures clicking "Level 20" navigates to actual Level 20
+                              if (displayedLevelNumber <= 5) {
+                                // Only first 5 levels have actual game data
+                                final gameLevel =
+                                    GameData.getLevels()[displayedLevelNumber -
+                                        1];
+                                Go.sailTo(
+                                  AppRoutes.game,
+                                  arguments: {"level": gameLevel, "scaffoldKey" : _scaffoldKey},
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Level $displayedLevelNumber coming soon!',
+                                    ),
+                                  ),
+                                );
+                              }
+                            },
+                            child: Transform.rotate(
+                              angle: _degreesToRadians(-10),
+                              child: Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  color: index == 1
+                                      ? const Color(0xff007400)
+                                      : Colors.white,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: index == 1
+                                        ? Colors.black54
+                                        : Colors.white,
+                                    width: 3,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Container(
+                                  margin: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: index == 1
+                                        ? const Color(0xff007400)
+                                        : Colors.white,
+                                    border: Border.all(
+                                      color: index == 1
+                                          ? const Color(0xff007400)
+                                          : Colors.white,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '$displayedLevelNumber', // Use the calculated displayed number
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w700,
+                                        color: index == 1
+                                            ? Colors.white
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      })
+                    ],
+                  ),
+                ),
+              ),
+
               // Header with icons
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -78,14 +191,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         ),
                       ),
                     ),
-                    const Text(
-                      'Select Level',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+
                     Container(
                       width: 50,
                       height: 50,
@@ -106,131 +212,6 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-              // Scrollable level selection with wavy path
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  reverse: true, // Start from bottom
-                  child: SizedBox(
-                    height: canvasHeight,
-                    width: size.width,
-                    child: Stack(
-                      children: [
-                        // Background scenic image
-                        Container(
-                          decoration: const BoxDecoration(
-                            image: DecorationImage(
-                              image: AssetImage('assets/level_screen_bg.jpeg'),
-                              fit: BoxFit.cover,
-                              opacity: 0.3,
-                            ),
-                          ),
-                        ),
-                        // Wavy line path
-                        CustomPaint(
-                          size: Size(size.width, canvasHeight),
-                          painter: LevelWavyLinePainter(totalLevels),
-                        ),
-                        // Level buttons positioned exactly on the wavy line
-                        ...levels.asMap().entries.map((entry) {
-                          int index = entry.key;
-                          // var level = entry.value;
-
-                          // 🔥 FIX: Calculate the DISPLAYED level number (what user sees)
-                          int displayedLevelNumber = totalLevels - index;
-
-                          // Calculate exact position on the wavy line
-                          final position = _calculateExactLevelPosition(
-                            index,
-                            size.width,
-                          );
-
-                          return Positioned(
-                            left: position.dx - 30, // Center the 60px button
-                            top: position.dy - 30, // Center the 60px button
-                            child: GestureDetector(
-                              onTap: () {
-                                // 🔥 FIX: Use displayedLevelNumber instead of level.level
-                                // This ensures clicking "Level 20" navigates to actual Level 20
-                                if (displayedLevelNumber <= 5) {
-                                  // Only first 5 levels have actual game data
-                                  final gameLevel =
-                                      GameData.getLevels()[displayedLevelNumber -
-                                          1];
-                                  Go.sailTo(
-                                    AppRoutes.game,
-                                    arguments: {"level": gameLevel},
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Level $displayedLevelNumber coming soon!',
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Transform.rotate(
-                                angle: _degreesToRadians(-10),
-                                child: Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: index == 1
-                                        ? const Color(0xff007400)
-                                        : Colors.white,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: index == 1
-                                          ? Colors.black54
-                                          : Colors.white,
-                                      width: 3,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Container(
-                                    margin: const EdgeInsets.all(3),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: index == 1
-                                          ? const Color(0xff007400)
-                                          : Colors.white,
-                                      border: Border.all(
-                                        color: index == 1
-                                            ? const Color(0xff007400)
-                                            : Colors.white,
-                                      ),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '$displayedLevelNumber', // Use the calculated displayed number
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w700,
-                                          color: index == 1
-                                              ? Colors.white
-                                              : Colors.black,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ],
-                    ),
-                  ),
                 ),
               ),
             ],

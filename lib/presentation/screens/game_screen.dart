@@ -7,11 +7,14 @@ import 'package:word_game/routes/generate_routes.dart';
 import '../../data/game_data.dart';
 import '../../models/game_models.dart';
 import '../controllers/sound_controller.dart';
+import '../drawer/custom_drawer.dart';
 import '../widgets/word_grid.dart';
 import '../widgets/word_list.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
+  // final GlobalKey<ScaffoldState> scaffoldKey;
+
   const GameScreen({super.key, required this.level});
 
   @override
@@ -22,6 +25,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameLevel currentLevel;
   late List<WordToFind> wordsToFind;
   late DragSelection dragSelection;
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Value Notifiers for state management
   final ValueNotifier<List<List<GridPosition>>> foundWordPositionsNotifier =
@@ -129,6 +134,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
+      endDrawer: CustomDrawer(),
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -177,10 +184,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                     ),
                     IconButtonWidget(
                       icon: Icons.settings,
-                      onTap: () async {
-                        await _soundController.playButtonSound();
-                        Go.backtrack();
+                      onTap: () {
+                        _scaffoldKey.currentState?.openEndDrawer();
                       },
+                      // {
+                      //   // await _soundController.playButtonSound();
+                      //   // Go.backtrack();
+                      //   // Open the settings drawer from right to left
+
+                      // },
                     ),
                   ],
                 ),
