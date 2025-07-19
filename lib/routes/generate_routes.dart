@@ -25,7 +25,7 @@ class RouteGenerate {
         return FadeRoute(duration: Duration(seconds: 3), page: SplashScreen());
 
       case AppRoutes.start:
-        return SlideUpTransition(
+        return FadeRoute(
           duration: Duration(seconds: 1),
           page: StartScreen(),
         );

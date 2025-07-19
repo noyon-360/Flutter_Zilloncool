@@ -59,7 +59,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Optimized Word Game',
-      theme: ThemeData.dark(),
+      theme: ThemeData.light(),
       navigatorKey: NavigationConfig.navigatorKey,
       navigatorObservers: NavigationConfig.navigatorObservers,
       onGenerateRoute: RouteGenerate.generateRoute,

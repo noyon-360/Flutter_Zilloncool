@@ -58,12 +58,14 @@ class _StartScreenState extends State<StartScreen> {
                         height: 70,
                       ),
                     ),
-                    Gap.h32,
-                    Image.asset(
-                      'assets/more_game_button.png',
-                      width: 239,
-                      height: 70,
-                    ),
+
+                    /// [Todo] `Future Update`
+                    // Gap.h32,
+                    // Image.asset(
+                    //   'assets/more_game_button.png',
+                    //   width: 239,
+                    //   height: 70,
+                    // ),
                     Gap.bottomBarGap,
                   ],
                 ),
