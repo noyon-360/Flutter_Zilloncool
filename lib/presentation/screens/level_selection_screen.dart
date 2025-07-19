@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutx_core/core/routes/services/go_next_navigation.dart';
+import 'package:word_game/presentation/controllers/level_progress_controller.dart';
 import 'package:word_game/presentation/drawer/custom_drawer.dart';
 import 'package:word_game/routes/generate_routes.dart';
 import '../../data/game_data.dart';
@@ -22,12 +23,22 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize level progress manager
+    _initializeLevelProgress();
+    
     // Start from bottom (reverse scroll)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
+  }
+
+  /// Initialize level progress system
+  Future<void> _initializeLevelProgress() async {
+    await LevelProgressController.initialize();
+    // Refresh UI after initialization
+    if (mounted) setState(() {});
   }
 
   @override
@@ -44,7 +55,6 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     return Scaffold(
       key: _scaffoldKey,
       endDrawer: CustomDrawer(),
-
       body: Container(
         decoration: const BoxDecoration(
           image: DecorationImage(
@@ -72,11 +82,13 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                       // Level buttons positioned exactly on the wavy line
                       ...levels.asMap().entries.map((entry) {
                         int index = entry.key;
-                        // var level = entry.value;
-
-                        // 🔥 FIX: Calculate the DISPLAYED level number (what user sees)
+                        
+                        // Calculate the DISPLAYED level number (what user sees)
                         int displayedLevelNumber = totalLevels - index;
-
+                        
+                        // Get level status for styling
+                        LevelStatus levelStatus = LevelProgressController.getLevelStatus(displayedLevelNumber);
+                        
                         // Calculate exact position on the wavy line
                         final position = _calculateExactLevelPosition(
                           index,
@@ -87,79 +99,10 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                           left: position.dx - 30, // Center the 60px button
                           top: position.dy - 30, // Center the 60px button
                           child: GestureDetector(
-                            onTap: () {
-                              // 🔥 FIX: Use displayedLevelNumber instead of level.level
-                              // This ensures clicking "Level 20" navigates to actual Level 20
-                              if (displayedLevelNumber <= 5) {
-                                // Only first 5 levels have actual game data
-                                final gameLevel =
-                                    GameData.getLevels()[displayedLevelNumber -
-                                        1];
-                                Go.sailTo(
-                                  AppRoutes.game,
-                                  arguments: {"level": gameLevel, "scaffoldKey" : _scaffoldKey},
-                                );
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Level $displayedLevelNumber coming soon!',
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
+                            onTap: () => _handleLevelTap(displayedLevelNumber, levelStatus),
                             child: Transform.rotate(
                               angle: _degreesToRadians(-10),
-                              child: Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  color: index == 1
-                                      ? const Color(0xff007400)
-                                      : Colors.white,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: index == 1
-                                        ? Colors.black54
-                                        : Colors.white,
-                                    width: 3,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Container(
-                                  margin: const EdgeInsets.all(3),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: index == 1
-                                        ? const Color(0xff007400)
-                                        : Colors.white,
-                                    border: Border.all(
-                                      color: index == 1
-                                          ? const Color(0xff007400)
-                                          : Colors.white,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '$displayedLevelNumber', // Use the calculated displayed number
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                        color: index == 1
-                                            ? Colors.white
-                                            : Colors.black,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                              child: _buildLevelButton(displayedLevelNumber, levelStatus),
                             ),
                           ),
                         );
@@ -168,7 +111,6 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                   ),
                 ),
               ),
-
               // Header with icons
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -183,15 +125,13 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                         border: Border.all(color: Colors.white, width: 2),
                       ),
                       child: IconButton(
-                        onPressed: () => Go.backtrack(),
-                        icon: const Icon(
-                          Icons.home,
+                        onPressed: () => Go.freshStartTo(AppRoutes.start),
+                        icon: const Icon(Icons.home,
                           color: Colors.white,
                           size: 24,
                         ),
                       ),
                     ),
-
                     Container(
                       width: 50,
                       height: 50,
@@ -204,8 +144,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
                           // Open the settings drawer from right to left
                           _scaffoldKey.currentState?.openEndDrawer();
                         },
-                        icon: const Icon(
-                          Icons.settings,
+                        icon: const Icon(Icons.settings,
                           color: Colors.white,
                           size: 24,
                         ),
@@ -221,7 +160,120 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     );
   }
 
-  // Generate 20 levels (using existing 5 levels + placeholders)
+  /// Handle level button tap based on level status
+  void _handleLevelTap(int levelNumber, LevelStatus status) {
+    switch (status) {
+      case LevelStatus.locked:
+        // Show locked message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Complete previous levels to unlock Level $levelNumber'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        break;
+        
+      case LevelStatus.completed:
+      case LevelStatus.current:
+      case LevelStatus.unlocked:
+        // Navigate to game - now supports all 20 levels
+        if (levelNumber <= GameData.getLevels().length) {
+          // Use actual game data for available levels
+          final gameLevel = GameData.getLevels()[levelNumber - 1];
+          Go.sailTo(AppRoutes.game, arguments: {
+            "level": gameLevel, 
+            "scaffoldKey": _scaffoldKey
+          });
+        } else {
+          // Show coming soon for levels beyond available game data
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Level $levelNumber coming soon!'),
+              backgroundColor: Colors.blue,
+            ),
+          );
+        }
+        break;
+    }
+  }
+
+  /// Build level button with appropriate styling based on status
+  Widget _buildLevelButton(int levelNumber, LevelStatus status) {
+    Color backgroundColor;
+    Color borderColor;
+    Color textColor;
+    Widget? statusIcon;
+
+    switch (status) {
+      case LevelStatus.completed:
+        backgroundColor = const Color(0xff00AA00); // Green for completed
+        borderColor = const Color(0xff008800);
+        textColor = Colors.white;
+        statusIcon = const Icon(Icons.check, color: Colors.white, size: 16);
+        break;
+        
+      case LevelStatus.current:
+        backgroundColor = const Color(0xff007400); // Primary color for current level
+        borderColor = Colors.black54;
+        textColor = Colors.white;
+        break;
+        
+      case LevelStatus.unlocked:
+        backgroundColor = Colors.white; // White for unlocked
+        borderColor = const Color(0xff007400);
+        textColor = Colors.black;
+        break;
+        
+      case LevelStatus.locked:
+        backgroundColor = Colors.grey.shade400; // Grey for locked
+        borderColor = Colors.grey.shade600;
+        textColor = Colors.grey.shade700;
+        statusIcon = Icon(Icons.lock, color: Colors.grey.shade700, size: 16);
+        break;
+    }
+
+    return Container(
+      width: 60,
+      height: 60,
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: borderColor,
+          width: 3,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Container(
+        margin: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: backgroundColor,
+          border: Border.all(
+            color: backgroundColor,
+          ),
+        ),
+        child: Center(
+          child: statusIcon ?? Text(
+            '$levelNumber',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: textColor,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Generate 20 levels (using existing game levels + placeholders)
   List<GameLevel> _generateLevels() {
     final existingLevels = GameData.getLevels();
     List<GameLevel> allLevels = [];
@@ -230,15 +282,13 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
       if (i <= existingLevels.length) {
         allLevels.add(existingLevels[i - 1]);
       } else {
-        // Create placeholder levels
-        allLevels.add(
-          GameLevel(
-            level: i,
-            words: ['PLACEHOLDER'],
-            grid: List.generate(7, (i) => List.generate(7, (j) => 'A')),
-            backgroundImage: 'assets/images/placeholder_bg.jpg',
-          ),
-        );
+        // Create placeholder levels for future content
+        allLevels.add(GameLevel(
+          level: i,
+          words: ['PLACEHOLDER'],
+          grid: List.generate(7, (i) => List.generate(7, (j) => 'A')),
+          backgroundImage: 'assets/images/placeholder_bg.jpg',
+        ));
       }
     }
     return allLevels;
@@ -251,11 +301,9 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
     final centerX = screenWidth / 2;
 
     // This matches EXACTLY with the LevelWavyLinePainter logic
-    final y1 =
-        waveHeight *
-        (index + 0.5); // Control point Y (where the button should be)
-    final x1 = index % 2 == 0
-        ? centerX - amplitude
+    final y1 = waveHeight * (index + 0.5); // Control point Y (where the button should be)
+    final x1 = index % 2 == 0 
+        ? centerX - amplitude 
         : centerX + amplitude; // Control point X
 
     return Offset(x1, y1);
@@ -267,7 +315,7 @@ class _LevelSelectionScreenState extends State<LevelSelectionScreen> {
   }
 }
 
-// Custom painter for wavy line using quadratic bezier curves
+// Custom painter remains the same
 class LevelWavyLinePainter extends CustomPainter {
   final int levelCount;
 
@@ -301,10 +349,9 @@ class LevelWavyLinePainter extends CustomPainter {
     // Create wavy path using quadratic bezier curves
     for (int i = 0; i < levelCount; i++) {
       final y1 = waveHeight * (i + 0.5); // Control point Y
-      final x1 = i % 2 == 0
-          ? centerX - amplitude
+      final x1 = i % 2 == 0 
+          ? centerX - amplitude 
           : centerX + amplitude; // Control point X
-
       final y2 = waveHeight * (i + 1); // End point Y
       final x2 = centerX; // End point X (always center)
 

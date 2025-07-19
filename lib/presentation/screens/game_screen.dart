@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutx_core/core/routes/services/go_next_navigation.dart';
 import 'package:flutx_core/flutx_core.dart';
 import 'package:word_game/constants/app_colors.dart';
+import 'package:word_game/presentation/controllers/level_progress_controller.dart';
 import 'package:word_game/presentation/widgets/icon_button_widget.dart';
 import 'package:word_game/routes/generate_routes.dart';
 import '../../data/game_data.dart';
@@ -161,7 +162,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       icon: Icons.arrow_back,
                       onTap: () async {
                         await _soundController.playButtonSound();
-                        Go.backtrack();
+                        Go.freshStartTo(AppRoutes.lavel);
                       },
                     ),
                     Container(
@@ -340,14 +341,31 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  // Also update the _buildNextLevelButton method:
   Widget _buildNextLevelButton() {
     return InkWell(
       onTap: () async {
         await _soundController.playButtonSound();
-        if (currentLevel.level < GameData.getLevels().length) {
-          final nextLevel = GameData.getLevels()[currentLevel.level];
+
+        if (!mounted) return;
+
+        // Get next level number
+        final nextLevelNumber = currentLevel.level + 1;
+
+        // Check if next level exists in game data
+        if (nextLevelNumber <= GameData.getLevels().length) {
+          final nextLevel = GameData.getLevels()[nextLevelNumber - 1];
           Go.swapTo(AppRoutes.game, arguments: {"level": nextLevel});
         } else {
+          // No more levels available, go back to level selection
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Congratulations! You completed all available levels!',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
           Go.backtrack();
         }
       },
@@ -412,6 +430,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       isCompleteNotifier.value = true;
       await _soundController.playLevelComplete();
       _celebrationController.forward();
+
+      // 🔥 NEW: Save level completion progress
+      await LevelProgressController.completeLevel(currentLevel.level);
+
+      print('🎉 Level ${currentLevel.level} completed and saved!');
     } else {
       await _soundController.playWordMatch();
     }

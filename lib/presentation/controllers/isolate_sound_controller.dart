@@ -130,15 +130,15 @@ class OptimizedSoundController {
 
   // Audio file paths
   static const String _backgroundMusicPath = 'background_music.wav';
-  static const String _buttonSoundPath = 'sound_effect.wav';
-  static const String _dragStartPath = 'match_success.wav';
-  static const String _dragStepPath = 'match_success.wav';
-  static const String _wordMatchPath = 'match_success.wav';
-  static const String _levelCompletePath = 'match_success.wav';
-  static const String _hintActivatePath = 'match_success.wav';
-  static const String _hintRevealPath = 'match_success.wav';
-  static const String _gameRefreshPath = 'match_success.wav';
-  static const String _invalidSelectionPath = 'match_success.wav';
+  static const String _buttonSoundPath = 'buttonSound.wav';
+  static const String _dragStartPath = 'dragStart.wav';
+  static const String _dragStepPath = 'dragStep.wav';
+  static const String _wordMatchPath = 'wordMatch.wav';
+  static const String _levelCompletePath = 'levelComplete.wav';
+  static const String _hintActivatePath = 'hintActivate.wav';
+  static const String _hintRevealPath = 'hintReveal.wav';
+  static const String _gameRefreshPath = 'gameRefresh.wav';
+  static const String _invalidSelectionPath = 'invalidSelection.wav';
 
   // Getters
   bool get isMusicEnabled => musicEnabledNotifier.value;
