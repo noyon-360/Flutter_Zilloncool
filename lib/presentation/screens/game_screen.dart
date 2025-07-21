@@ -14,7 +14,6 @@ import '../widgets/word_list.dart';
 
 class GameScreen extends StatefulWidget {
   final GameLevel level;
-  // final GlobalKey<ScaffoldState> scaffoldKey;
 
   const GameScreen({super.key, required this.level});
 
@@ -26,25 +25,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late GameLevel currentLevel;
   late List<WordToFind> wordsToFind;
   late DragSelection dragSelection;
-
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   // Value Notifiers for state management
-  final ValueNotifier<List<List<GridPosition>>> foundWordPositionsNotifier =
-      ValueNotifier([]);
+  final ValueNotifier<List<List<GridPosition>>> foundWordPositionsNotifier = ValueNotifier([]);
   final ValueNotifier<bool> isCompleteNotifier = ValueNotifier(false);
   final ValueNotifier<bool> isHintActiveNotifier = ValueNotifier(false);
-  final ValueNotifier<WordToFind?> currentHintWordNotifier = ValueNotifier(
-    null,
-  );
-  final ValueNotifier<List<GridPosition>> hintPositionsNotifier = ValueNotifier(
-    [],
-  );
+  final ValueNotifier<WordToFind?> currentHintWordNotifier = ValueNotifier(null);
+  final ValueNotifier<List<GridPosition>> hintPositionsNotifier = ValueNotifier([]);
   final ValueNotifier<int> hintStepNotifier = ValueNotifier(0);
   final ValueNotifier<int> currentHintLetterIndexNotifier = ValueNotifier(0);
   final ValueNotifier<List<String>> foundWordsNotifier = ValueNotifier([]);
-
-  // Add ValueNotifier for grid to make it reactive
   final ValueNotifier<List<List<String>>> gridNotifier = ValueNotifier([]);
 
   // Enhanced sound controller
@@ -62,6 +53,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     _initializeGame();
     _initializeAnimations();
     _initializeSound();
+    
+    // Preload next levels for smoother experience
+    _preloadNextLevels();
   }
 
   void _initializeAnimations() {
@@ -90,7 +84,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     isCompleteNotifier.value = false;
     foundWordsNotifier.value = [];
 
-    // Update grid notifier with new grid data - this triggers the rebuild
+    // Update grid notifier with new grid data
     gridNotifier.value = List.from(
       currentLevel.grid.map((row) => List<String>.from(row)),
     );
@@ -103,15 +97,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     currentHintLetterIndexNotifier.value = 0;
   }
 
+  void _preloadNextLevels() {
+    // Preload next 3 levels for smoother navigation
+    GameData.preloadLevels(currentLevel.level);
+  }
+
   void _refreshGame() async {
     await _soundController.playGameRefresh();
-
-    // Get new level with refreshed grid
+    
+    // Get new level with refreshed grid using optimized generation
     currentLevel = GameData.refreshLevel(currentLevel);
-
+    
     // Reinitialize game with new data
     _initializeGame();
-
     print('🎮 Game refreshed! New word positions generated.');
   }
 
@@ -125,7 +123,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     hintStepNotifier.dispose();
     currentHintLetterIndexNotifier.dispose();
     foundWordsNotifier.dispose();
-    gridNotifier.dispose(); // Don't forget to dispose the new notifier
+    gridNotifier.dispose();
     _hintAnimationController.dispose();
     _flashAnimationController.dispose();
     _celebrationController.dispose();
@@ -152,7 +150,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         child: SafeArea(
           child: Column(
             children: [
-              // Header
+              // Header with level info and theme
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -165,21 +163,32 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         Go.freshStartTo(AppRoutes.lavel);
                       },
                     ),
-                    Container(
-                      padding: AppSizes.paddingXl.symmetric(
-                        horizontal: 46.5,
-                        vertical: 8.5,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        color: AppColors.primaryBgColor,
-                      ),
-                      child: Text(
-                        'Level ${currentLevel.level}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          color: AppColors.primaryBgColor,
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'Level ${currentLevel.level}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              GameData.getLevelTheme(currentLevel.level),
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -188,28 +197,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       onTap: () {
                         _scaffoldKey.currentState?.openEndDrawer();
                       },
-                      // {
-                      //   // await _soundController.playButtonSound();
-                      //   // Go.backtrack();
-                      //   // Open the settings drawer from right to left
-
-                      // },
                     ),
                   ],
                 ),
               ),
+              
               Gap.bottomBarGap,
+
               // Word list or completion message
               ValueListenableBuilder<bool>(
                 valueListenable: isCompleteNotifier,
                 builder: (context, isComplete, child) {
                   return SizedBox(
-                    child: isComplete
-                        ? _buildCompletionWidget()
-                        : _buildWordListWidget(),
+                    child: isComplete ? _buildCompletionWidget() : _buildWordListWidget(),
                   );
                 },
               ),
+
               // Enhanced Game grid with ValueListenableBuilder for reactive updates
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -228,7 +232,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   valueListenable: gridNotifier,
                   builder: (context, grid, child) {
                     return WordGrid(
-                      grid: grid, // Use the reactive grid data
+                      grid: grid,
                       wordsToFind: wordsToFind,
                       dragSelection: dragSelection,
                       onWordFound: _onWordFound,
@@ -239,23 +243,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       currentHintWordNotifier: currentHintWordNotifier,
                       hintPositionsNotifier: hintPositionsNotifier,
                       hintStepNotifier: hintStepNotifier,
-                      currentHintLetterIndexNotifier:
-                          currentHintLetterIndexNotifier,
+                      currentHintLetterIndexNotifier: currentHintLetterIndexNotifier,
                       hintAnimationController: _hintAnimationController,
                       flashAnimationController: _flashAnimationController,
                     );
                   },
                 ),
               ),
+
               // Control buttons
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: ValueListenableBuilder<bool>(
                   valueListenable: isCompleteNotifier,
                   builder: (context, isComplete, child) {
-                    return isComplete
-                        ? _buildNextLevelButton()
-                        : _buildControlButtons();
+                    return isComplete ? _buildNextLevelButton() : _buildControlButtons();
                   },
                 ),
               ),
@@ -305,7 +307,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             child: Padding(
               padding: AppSizes.paddingSm.vertical,
               child: Text(
-                "WRITTEN",
+                "FIND THESE WORDS",
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
@@ -341,33 +343,17 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  // Also update the _buildNextLevelButton method:
   Widget _buildNextLevelButton() {
     return InkWell(
       onTap: () async {
         await _soundController.playButtonSound();
-
         if (!mounted) return;
 
-        // Get next level number
         final nextLevelNumber = currentLevel.level + 1;
-
-        // Check if next level exists in game data
-        if (nextLevelNumber <= GameData.getLevels().length) {
-          final nextLevel = GameData.getLevels()[nextLevelNumber - 1];
-          Go.swapTo(AppRoutes.game, arguments: {"level": nextLevel});
-        } else {
-          // No more levels available, go back to level selection
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Congratulations! You completed all available levels!',
-              ),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Go.backtrack();
-        }
+        
+        // Generate next level dynamically
+        final nextLevel = GameData.generateLevel(nextLevelNumber);
+        Go.swapTo(AppRoutes.game, arguments: {"level": nextLevel});
       },
       child: SizedBox(
         height: 34,
@@ -385,22 +371,19 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           valueListenable: isHintActiveNotifier,
           builder: (context, isHintActive, child) {
             return IconButtonWidget(
-              icon: isHintActive
-                  ? Icons.hourglass_top
-                  : Icons.lightbulb_outline,
+              icon: isHintActive ? Icons.hourglass_top : Icons.lightbulb_outline,
               onTap: isHintActive ? null : _showHint,
               iconColor: isHintActive ? Colors.grey : Colors.white,
             );
           },
         ),
         Gap.w16,
-        // Add visual feedback for refresh button
         ValueListenableBuilder<bool>(
           valueListenable: isHintActiveNotifier,
           builder: (context, isHintActive, child) {
             return IconButtonWidget(
               icon: Icons.refresh,
-              onTap: isHintActive ? null : _refreshGame, // Disable during hint
+              onTap: isHintActive ? null : _refreshGame,
               iconColor: isHintActive ? Colors.grey : Colors.white,
             );
           },
@@ -431,9 +414,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       await _soundController.playLevelComplete();
       _celebrationController.forward();
 
-      // 🔥 NEW: Save level completion progress
+      // Save level completion progress
       await LevelProgressController.completeLevel(currentLevel.level);
-
       print('🎉 Level ${currentLevel.level} completed and saved!');
     } else {
       await _soundController.playWordMatch();
@@ -442,14 +424,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void _showHint() async {
     await _soundController.playHintActivate();
-    List<WordToFind> unMatchedWords = wordsToFind
-        .where((w) => !w.isFound)
-        .toList();
+    
+    List<WordToFind> unMatchedWords = wordsToFind.where((w) => !w.isFound).toList();
     if (unMatchedWords.isEmpty) return;
 
     unMatchedWords.shuffle();
     WordToFind selectedWord = unMatchedWords.first;
     List<GridPosition> wordPositions = _findWordInGrid(selectedWord.word);
+
     if (wordPositions.isEmpty) return;
 
     isHintActiveNotifier.value = true;
@@ -492,25 +474,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   List<GridPosition> _findWordInGrid(String word) {
     List<List<int>> directions = [
-      [-1, -1],
-      [-1, 0],
-      [-1, 1],
-      [0, -1],
-      [0, 1],
-      [1, -1],
-      [1, 0],
-      [1, 1],
+      [-1, -1], [-1, 0], [-1, 1],
+      [0, -1], [0, 1],
+      [1, -1], [1, 0], [1, 1],
     ];
 
     for (int row = 0; row < 7; row++) {
       for (int col = 0; col < 7; col++) {
         for (List<int> direction in directions) {
           List<GridPosition> positions = _checkWordAtPosition(
-            word,
-            row,
-            col,
-            direction[0],
-            direction[1],
+            word, row, col, direction[0], direction[1],
           );
           if (positions.isNotEmpty) {
             return positions;
@@ -521,23 +494,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return [];
   }
 
-  List<GridPosition> _checkWordAtPosition(
-    String word,
-    int startRow,
-    int startCol,
-    int deltaRow,
-    int deltaCol,
-  ) {
+  List<GridPosition> _checkWordAtPosition(String word, int startRow, int startCol, int deltaRow, int deltaCol) {
     List<GridPosition> positions = [];
     for (int i = 0; i < word.length; i++) {
       int row = startRow + i * deltaRow;
       int col = startCol + i * deltaCol;
+
       if (row < 0 || row >= 7 || col < 0 || col >= 7) {
         return [];
       }
+
       if (currentLevel.grid[row][col] != word[i]) {
         return [];
       }
+
       positions.add(GridPosition(row, col));
     }
     return positions;
